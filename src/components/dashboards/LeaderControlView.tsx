@@ -35,6 +35,8 @@ import { getAreaLabel } from '@/lib/areaColors';
 
 interface Props {
   userId: string;
+  hideInternal?: boolean;
+  onHideInternalChange?: (value: boolean) => void;
 }
 
 const emptyBlock = (): NewRoadblockInput & { projectId: string } => ({
@@ -45,7 +47,7 @@ const emptyBlock = (): NewRoadblockInput & { projectId: string } => ({
   waiting_on_what: '',
 });
 
-export const LeaderControlView = ({ userId }: Props) => {
+export const LeaderControlView = ({ userId, hideInternal, onHideInternalChange }: Props) => {
   const navigate = useNavigate();
   const {
     projects,
@@ -157,9 +159,15 @@ export const LeaderControlView = ({ userId }: Props) => {
 
       {/* Update progetti */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Update progetti</CardTitle>
-          <CardDescription>Pubblica l’aggiornamento settimanale senza entrare nel progetto.</CardDescription>
+        <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle className="text-base">Update progetti</CardTitle>
+            <CardDescription>Pubblica l’aggiornamento settimanale senza entrare nel progetto.</CardDescription>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Label htmlFor="hide-internal" className="text-xs text-muted-foreground cursor-pointer">Nascondi interni</Label>
+            <Switch id="hide-internal" checked={!!hideInternal} onCheckedChange={(v) => onHideInternalChange?.(v)} />
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y">

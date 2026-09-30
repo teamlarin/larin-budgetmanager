@@ -31,9 +31,9 @@ export interface LeaderRoadblock extends ProjectRoadblock {
 
 const ACTIVE_STATUSES = ['aperto', 'in_partenza'] as const;
 
-export const useLeaderProjectsControl = (userId?: string | null) => {
+export const useLeaderProjectsControl = (userId?: string | null, hideInternal?: boolean) => {
   const queryClient = useQueryClient();
-  const queryKey = ['leader-projects-control', userId];
+  const queryKey = ['leader-projects-control', userId, !!hideInternal];
 
   const query = useQuery({
     queryKey,
@@ -96,7 +96,7 @@ export const useLeaderProjectsControl = (userId?: string | null) => {
 
       const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
 
-      const mapped: LeaderProject[] = projects.map((p: any) => {
+      let mapped: LeaderProject[] = projects.map((p: any) => {
         const last = latestByProject.get(p.id);
         const lastAt = last?.created_at ?? null;
         return {
@@ -120,6 +120,12 @@ export const useLeaderProjectsControl = (userId?: string | null) => {
         };
       });
 
+      const totalCount = mapped.length;
+
+      if (hideInternal) {
+        mapped = mapped.filter((p) => String(p.area ?? '').toLowerCase() !== 'interno');
+      }
+
       mapped.sort((a, b) => {
         if (a.updateDue !== b.updateDue) return a.updateDue ? -1 : 1;
         return (b.openRoadblocksCount - a.openRoadblocksCount) || a.name.localeCompare(b.name);
@@ -127,6 +133,7 @@ export const useLeaderProjectsControl = (userId?: string | null) => {
 
       return {
         projects: mapped,
+        totalCount,
         roadblocks: allRoadblocks.filter((r) => !r.resolved_at),
         resolved: allRoadblocks.filter((r) => !!r.resolved_at),
       };
@@ -174,6 +181,7 @@ export const useLeaderProjectsControl = (userId?: string | null) => {
 
   return {
     projects: data?.projects ?? [],
+    totalCount: data?.totalCount ?? 0,
     openRoadblocks: data?.roadblocks ?? [],
     resolvedRoadblocks: data?.resolved ?? [],
     updatesDueCount: (data?.projects ?? []).filter((p) => p.updateDue).length,
