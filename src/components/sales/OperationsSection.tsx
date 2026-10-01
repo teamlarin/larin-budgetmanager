@@ -61,6 +61,40 @@ export function OperationsSection({ year }: { year: number | null }) {
   const { data: satisfactionRows = [], isLoading: isLoadingSatisfaction, isError: satisfactionError } =
     useCustomerSatisfaction(range);
 
+  const [satisfactionMonth, setSatisfactionMonth] = useState<string>('all');
+  const [satisfactionArea, setSatisfactionArea] = useState<string>('all');
+
+  const satisfactionMonths = useMemo(() => {
+    const keys = new Set<string>();
+    for (const row of satisfactionRows) {
+      if (row.filledAt) keys.add(row.filledAt.slice(0, 7));
+    }
+    return Array.from(keys)
+      .sort((a, b) => b.localeCompare(a))
+      .map((value) => ({
+        value,
+        label: format(new Date(`${value}-01T00:00:00`), 'LLLL yyyy', { locale: it }),
+      }));
+  }, [satisfactionRows]);
+
+  const satisfactionAreas = useMemo(() => {
+    const keys = new Set<string>();
+    for (const row of satisfactionRows) {
+      if (row.area) keys.add(row.area);
+    }
+    return Array.from(keys).sort((a, b) => a.localeCompare(b, 'it'));
+  }, [satisfactionRows]);
+
+  const filteredSatisfactionRows = useMemo(
+    () =>
+      satisfactionRows.filter((row) => {
+        if (satisfactionMonth !== 'all' && (row.filledAt ?? '').slice(0, 7) !== satisfactionMonth) return false;
+        if (satisfactionArea !== 'all' && row.area !== satisfactionArea) return false;
+        return true;
+      }),
+    [satisfactionRows, satisfactionMonth, satisfactionArea]
+  );
+
   const changePeriod = (value: OperationsPeriod) => {
     setPeriod(value);
     setOffset(0);
