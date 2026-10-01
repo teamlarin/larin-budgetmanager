@@ -8,8 +8,8 @@ import type { SatisfactionRow } from './useOperationsData';
 
 const scoreTone = (score: number | null) => {
   if (score === null) return '';
-  if (score >= 9) return 'text-emerald-600 dark:text-emerald-400';
-  if (score >= 7) return 'text-amber-600 dark:text-amber-400';
+  if (score >= 5) return 'text-emerald-600 dark:text-emerald-400';
+  if (score >= 4) return 'text-amber-600 dark:text-amber-400';
   return 'text-destructive';
 };
 
