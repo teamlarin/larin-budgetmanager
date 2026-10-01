@@ -111,7 +111,7 @@ export const ProjectRetrospectivePanel = ({
     );
     (csat?.responses ?? []).forEach((r) => {
       const when = r.filledAt ? format(new Date(r.filledAt), 'dd/MM/yyyy') : 's.d.';
-      lines.push(`  · ${when} — ${r.contactName || 'referente'}: ${r.nps ?? '—'}/10`);
+      lines.push(`  · ${when} — ${r.contactName || 'referente'}: ${r.nps ?? '—'}/5`);
       if (r.appreciated) lines.push(`    apprezzato: ${r.appreciated}`);
       if (r.improvements) lines.push(`    da migliorare: ${r.improvements}`);
     });
