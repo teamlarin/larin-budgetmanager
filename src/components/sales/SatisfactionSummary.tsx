@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { npsSummary, satisfactionBreakdown } from '@/lib/operationsMetrics';
+import { formatSatisfactionGroupLabel } from '@/lib/satisfactionLabels';
 import type { SatisfactionRow } from './useOperationsData';
 
 type GroupKey = 'area' | 'projectType' | 'discipline';
