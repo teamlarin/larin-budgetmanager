@@ -96,7 +96,7 @@ export const useLeaderProjectsControl = (userId?: string | null, hideInternal?: 
 
       const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
 
-      let mapped: LeaderProject[] = projects.map((p: any) => {
+      const mapped: LeaderProject[] = projects.map((p: any) => {
         const last = latestByProject.get(p.id);
         const lastAt = last?.created_at ?? null;
         return {
