@@ -271,12 +271,12 @@ export interface NpsSummary {
   npsScore: number | null;
 }
 
-/** Sintesi NPS su scala 0-10: promotori 9-10, passivi 7-8, detrattori 0-6. */
+/** Sintesi NPS su scala 1-5: promotori 5, passivi 4, detrattori 1-3. */
 export function npsSummary(scores: (number | null)[]): NpsSummary {
   const valid = scores.filter((score): score is number => score !== null && Number.isFinite(score));
-  const promoters = valid.filter((score) => score >= 9).length;
-  const passives = valid.filter((score) => score >= 7 && score < 9).length;
-  const detractors = valid.filter((score) => score < 7).length;
+  const promoters = valid.filter((score) => score >= 5).length;
+  const passives = valid.filter((score) => score >= 4 && score < 5).length;
+  const detractors = valid.filter((score) => score < 4).length;
   return {
     responses: valid.length,
     promoters,
