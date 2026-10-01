@@ -16,6 +16,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OPERATIONS_PERIOD_LABELS, closedPeriodRange, type OperationsPeriod } from '@/lib/operationsMetrics';
+import { formatAreaLabel } from '@/lib/satisfactionLabels';
 import { UtilizationSection } from './UtilizationSection';
 import { ScopeCreepSummary } from './ScopeCreepSummary';
 import { ScopeCreepTable } from './ScopeCreepTable';
