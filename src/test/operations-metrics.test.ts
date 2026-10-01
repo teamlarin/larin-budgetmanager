@@ -160,13 +160,13 @@ describe('riepiloghi sintetici', () => {
   it('satisfactionBreakdown raggruppa per chiave', () => {
     const groups = satisfactionBreakdown(
       [
-        { nps: 10, area: 'tech' },
-        { nps: 8, area: 'tech' },
-        { nps: 5, area: '' },
+        { nps: 5, area: 'tech' },
+        { nps: 4, area: 'tech' },
+        { nps: 2, area: '' },
       ] as any,
       (row: any) => row.area
     );
-    expect(groups[0]).toMatchObject({ key: 'tech', responses: 2, averageScore: 9 });
+    expect(groups[0]).toMatchObject({ key: 'tech', responses: 2, averageScore: 4.5 });
     expect(groups[1].key).toBe('non indicato');
   });
 });
