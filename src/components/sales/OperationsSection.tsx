@@ -13,6 +13,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OPERATIONS_PERIOD_LABELS, closedPeriodRange, type OperationsPeriod } from '@/lib/operationsMetrics';
 import { UtilizationSection } from './UtilizationSection';
@@ -60,6 +61,40 @@ export function OperationsSection({ year }: { year: number | null }) {
   const { data: deliveryRows = [], isLoading: isLoadingDelivery } = useOnTimeDelivery(range);
   const { data: satisfactionRows = [], isLoading: isLoadingSatisfaction, isError: satisfactionError } =
     useCustomerSatisfaction(range);
+
+  const [satisfactionMonth, setSatisfactionMonth] = useState<string>('all');
+  const [satisfactionArea, setSatisfactionArea] = useState<string>('all');
+
+  const satisfactionMonths = useMemo(() => {
+    const keys = new Set<string>();
+    for (const row of satisfactionRows) {
+      if (row.filledAt) keys.add(row.filledAt.slice(0, 7));
+    }
+    return Array.from(keys)
+      .sort((a, b) => b.localeCompare(a))
+      .map((value) => ({
+        value,
+        label: format(new Date(`${value}-01T00:00:00`), 'LLLL yyyy', { locale: it }),
+      }));
+  }, [satisfactionRows]);
+
+  const satisfactionAreas = useMemo(() => {
+    const keys = new Set<string>();
+    for (const row of satisfactionRows) {
+      if (row.area) keys.add(row.area);
+    }
+    return Array.from(keys).sort((a, b) => a.localeCompare(b, 'it'));
+  }, [satisfactionRows]);
+
+  const filteredSatisfactionRows = useMemo(
+    () =>
+      satisfactionRows.filter((row) => {
+        if (satisfactionMonth !== 'all' && (row.filledAt ?? '').slice(0, 7) !== satisfactionMonth) return false;
+        if (satisfactionArea !== 'all' && row.area !== satisfactionArea) return false;
+        return true;
+      }),
+    [satisfactionRows, satisfactionMonth, satisfactionArea]
+  );
 
   const changePeriod = (value: OperationsPeriod) => {
     setPeriod(value);
@@ -182,10 +217,52 @@ export function OperationsSection({ year }: { year: number | null }) {
             <CardSkeleton />
           ) : (
             <>
-              <SatisfactionSummary rows={satisfactionRows} isError={satisfactionError} />
               {satisfactionRows.length > 0 && (
+                <div className="mb-5 flex flex-wrap items-center gap-3">
+                  <Select value={satisfactionMonth} onValueChange={setSatisfactionMonth}>
+                    <SelectTrigger className="w-[190px]">
+                      <SelectValue placeholder="Mese" />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 border bg-background">
+                      <SelectItem value="all">Tutti i mesi</SelectItem>
+                      {satisfactionMonths.map((month) => (
+                        <SelectItem key={month.value} value={month.value} className="capitalize">
+                          {month.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={satisfactionArea} onValueChange={setSatisfactionArea}>
+                    <SelectTrigger className="w-[190px]">
+                      <SelectValue placeholder="Area" />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 border bg-background">
+                      <SelectItem value="all">Tutte le aree</SelectItem>
+                      {satisfactionAreas.map((area) => (
+                        <SelectItem key={area} value={area}>
+                          {area}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {(satisfactionMonth !== 'all' || satisfactionArea !== 'all') && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSatisfactionMonth('all');
+                        setSatisfactionArea('all');
+                      }}
+                    >
+                      Azzera filtri
+                    </Button>
+                  )}
+                </div>
+              )}
+              <SatisfactionSummary rows={filteredSatisfactionRows} isError={satisfactionError} />
+              {filteredSatisfactionRows.length > 0 && (
                 <DetailPanel label="Vedi le risposte">
-                  <SatisfactionSection rows={satisfactionRows} isError={satisfactionError} />
+                  <SatisfactionSection rows={filteredSatisfactionRows} isError={satisfactionError} />
                 </DetailPanel>
               )}
             </>
