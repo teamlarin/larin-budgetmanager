@@ -240,7 +240,7 @@ export function OperationsSection({ year }: { year: number | null }) {
                       <SelectItem value="all">Tutte le aree</SelectItem>
                       {satisfactionAreas.map((area) => (
                         <SelectItem key={area} value={area}>
-                          {area}
+                          {formatAreaLabel(area)}
                         </SelectItem>
                       ))}
                     </SelectContent>
