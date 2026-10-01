@@ -69,7 +69,7 @@ export function SatisfactionSummary({ rows, isError }: { rows: SatisfactionRow[]
             <TableBody>
               {groups.map((group) => (
                 <TableRow key={group.key}>
-                  <TableCell className="font-medium">{group.key}</TableCell>
+                  <TableCell className="font-medium">{formatSatisfactionGroupLabel(groupBy, group.key)}</TableCell>
                   <TableCell className="text-right">{group.responses}</TableCell>
                   <TableCell className="text-right">{score(group.averageScore)}</TableCell>
                   <TableCell className="text-right">{group.npsScore ?? '—'}</TableCell>
