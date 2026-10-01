@@ -29,11 +29,11 @@ export interface LeaderRoadblock extends ProjectRoadblock {
   _clientName: string | null;
 }
 
-const ACTIVE_STATUSES = ['aperto', 'in_partenza'] as const;
+const ACTIVE_STATUSES = ['aperto'] as const;
 
 export const useLeaderProjectsControl = (userId?: string | null, hideInternal?: boolean) => {
   const queryClient = useQueryClient();
-  const queryKey = ['leader-projects-control', userId, !!hideInternal];
+  const queryKey = ['leader-projects-control', userId];
 
   const query = useQuery({
     queryKey,
@@ -122,10 +122,6 @@ export const useLeaderProjectsControl = (userId?: string | null, hideInternal?: 
 
       const totalCount = mapped.length;
 
-      if (hideInternal) {
-        mapped = mapped.filter((p) => String(p.area ?? '').toLowerCase() !== 'interno');
-      }
-
       mapped.sort((a, b) => {
         if (a.updateDue !== b.updateDue) return a.updateDue ? -1 : 1;
         return (b.openRoadblocksCount - a.openRoadblocksCount) || a.name.localeCompare(b.name);
@@ -178,13 +174,17 @@ export const useLeaderProjectsControl = (userId?: string | null, hideInternal?: 
   });
 
   const data = query.data;
+  const isInternal = (p: LeaderProject) =>
+    String(p.area ?? '').trim().toLowerCase() === 'interno' ||
+    String(p.billingType ?? '').trim().toLowerCase() === 'interno';
+  const visibleProjects = (data?.projects ?? []).filter((p) => !hideInternal || !isInternal(p));
 
   return {
-    projects: data?.projects ?? [],
+    projects: visibleProjects,
     totalCount: data?.totalCount ?? 0,
     openRoadblocks: data?.roadblocks ?? [],
     resolvedRoadblocks: data?.resolved ?? [],
-    updatesDueCount: (data?.projects ?? []).filter((p) => p.updateDue).length,
+    updatesDueCount: visibleProjects.filter((p) => p.updateDue).length,
     isLoading: query.isLoading,
     refetch: query.refetch,
     resolveRoadblock,
