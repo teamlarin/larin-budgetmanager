@@ -375,8 +375,8 @@ export const ProjectRetrospectivePanel = ({
                     {r.contactName || 'Referente'}
                     {r.filledAt ? ` — ${format(new Date(r.filledAt), 'd MMMM yyyy', { locale: it })}` : ''}
                   </p>
-                  <Badge variant={r.nps != null && r.nps >= 9 ? 'default' : 'secondary'}>
-                    {r.nps != null ? `${r.nps}/10` : 'senza voto'}
+                  <Badge variant={r.nps != null && r.nps >= 5 ? 'default' : 'secondary'}>
+                    {r.nps != null ? `${r.nps}/5` : 'senza voto'}
                   </Badge>
                 </div>
                 {r.appreciated && (
