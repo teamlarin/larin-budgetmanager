@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { npsSummary, satisfactionBreakdown } from '@/lib/operationsMetrics';
+import { formatSatisfactionGroupLabel } from '@/lib/satisfactionLabels';
 import type { SatisfactionRow } from './useOperationsData';
 
 type GroupKey = 'area' | 'projectType' | 'discipline';
@@ -68,7 +69,7 @@ export function SatisfactionSummary({ rows, isError }: { rows: SatisfactionRow[]
             <TableBody>
               {groups.map((group) => (
                 <TableRow key={group.key}>
-                  <TableCell className="font-medium">{group.key}</TableCell>
+                  <TableCell className="font-medium">{formatSatisfactionGroupLabel(groupBy, group.key)}</TableCell>
                   <TableCell className="text-right">{group.responses}</TableCell>
                   <TableCell className="text-right">{score(group.averageScore)}</TableCell>
                   <TableCell className="text-right">{group.npsScore ?? '—'}</TableCell>
