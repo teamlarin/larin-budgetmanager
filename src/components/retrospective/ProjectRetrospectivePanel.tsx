@@ -111,7 +111,7 @@ export const ProjectRetrospectivePanel = ({
     );
     (csat?.responses ?? []).forEach((r) => {
       const when = r.filledAt ? format(new Date(r.filledAt), 'dd/MM/yyyy') : 's.d.';
-      lines.push(`  · ${when} — ${r.contactName || 'referente'}: ${r.nps ?? '—'}/10`);
+      lines.push(`  · ${when} — ${r.contactName || 'referente'}: ${r.nps ?? '—'}/5`);
       if (r.appreciated) lines.push(`    apprezzato: ${r.appreciated}`);
       if (r.improvements) lines.push(`    da migliorare: ${r.improvements}`);
     });
@@ -375,8 +375,8 @@ export const ProjectRetrospectivePanel = ({
                     {r.contactName || 'Referente'}
                     {r.filledAt ? ` — ${format(new Date(r.filledAt), 'd MMMM yyyy', { locale: it })}` : ''}
                   </p>
-                  <Badge variant={r.nps != null && r.nps >= 9 ? 'default' : 'secondary'}>
-                    {r.nps != null ? `${r.nps}/10` : 'senza voto'}
+                  <Badge variant={r.nps != null && r.nps >= 5 ? 'default' : 'secondary'}>
+                    {r.nps != null ? `${r.nps}/5` : 'senza voto'}
                   </Badge>
                 </div>
                 {r.appreciated && (

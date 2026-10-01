@@ -98,10 +98,14 @@ describe('saturazione', () => {
 });
 
 describe('nps', () => {
-  it('calcola promotori, detrattori e indice', () => {
-    const summary = npsSummary([10, 9, 8, 5, null]);
+  it('calcola promotori, detrattori e indice su scala 1-5', () => {
+    const summary = npsSummary([5, 5, 4, 2, null]);
     expect(summary).toMatchObject({ responses: 4, promoters: 2, passives: 1, detractors: 1, npsScore: 25 });
-    expect(summary.averageScore).toBe(8);
+    expect(summary.averageScore).toBe(4);
+  });
+
+  it('due voti massimi danno NPS +100', () => {
+    expect(npsSummary([5, 5]).npsScore).toBe(100);
   });
 
   it('senza risposte resta vuoto', () => {
@@ -156,13 +160,13 @@ describe('riepiloghi sintetici', () => {
   it('satisfactionBreakdown raggruppa per chiave', () => {
     const groups = satisfactionBreakdown(
       [
-        { nps: 10, area: 'tech' },
-        { nps: 8, area: 'tech' },
-        { nps: 5, area: '' },
+        { nps: 5, area: 'tech' },
+        { nps: 4, area: 'tech' },
+        { nps: 2, area: '' },
       ] as any,
       (row: any) => row.area
     );
-    expect(groups[0]).toMatchObject({ key: 'tech', responses: 2, averageScore: 9 });
+    expect(groups[0]).toMatchObject({ key: 'tech', responses: 2, averageScore: 4.5 });
     expect(groups[1].key).toBe('non indicato');
   });
 });
