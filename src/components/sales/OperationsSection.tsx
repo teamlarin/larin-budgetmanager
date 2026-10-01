@@ -182,10 +182,52 @@ export function OperationsSection({ year }: { year: number | null }) {
             <CardSkeleton />
           ) : (
             <>
-              <SatisfactionSummary rows={satisfactionRows} isError={satisfactionError} />
               {satisfactionRows.length > 0 && (
+                <div className="mb-5 flex flex-wrap items-center gap-3">
+                  <Select value={satisfactionMonth} onValueChange={setSatisfactionMonth}>
+                    <SelectTrigger className="w-[190px]">
+                      <SelectValue placeholder="Mese" />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 border bg-background">
+                      <SelectItem value="all">Tutti i mesi</SelectItem>
+                      {satisfactionMonths.map((month) => (
+                        <SelectItem key={month.value} value={month.value} className="capitalize">
+                          {month.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={satisfactionArea} onValueChange={setSatisfactionArea}>
+                    <SelectTrigger className="w-[190px]">
+                      <SelectValue placeholder="Area" />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 border bg-background">
+                      <SelectItem value="all">Tutte le aree</SelectItem>
+                      {satisfactionAreas.map((area) => (
+                        <SelectItem key={area} value={area}>
+                          {area}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {(satisfactionMonth !== 'all' || satisfactionArea !== 'all') && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSatisfactionMonth('all');
+                        setSatisfactionArea('all');
+                      }}
+                    >
+                      Azzera filtri
+                    </Button>
+                  )}
+                </div>
+              )}
+              <SatisfactionSummary rows={filteredSatisfactionRows} isError={satisfactionError} />
+              {filteredSatisfactionRows.length > 0 && (
                 <DetailPanel label="Vedi le risposte">
-                  <SatisfactionSection rows={satisfactionRows} isError={satisfactionError} />
+                  <SatisfactionSection rows={filteredSatisfactionRows} isError={satisfactionError} />
                 </DetailPanel>
               )}
             </>
