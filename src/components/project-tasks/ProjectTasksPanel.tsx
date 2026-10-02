@@ -28,6 +28,7 @@ import {
   useImportWorkflowTasks, useWorkflowImportOptions, type ProjectTaskInput,
 } from '@/hooks/useProjectTasks';
 import { ProjectTaskFormSheet } from './ProjectTaskFormSheet';
+import { QuickAddTaskInput } from './QuickAddTaskInput';
 import { ImportWorkflowTasksDialog } from './ImportWorkflowTasksDialog';
 
 import type { TaskCalendarMode } from './ProjectTasksCalendar';
@@ -283,6 +284,14 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {!readOnly && (
+          <QuickAddTaskInput
+            activityOptions={activityOptions}
+            preferredActivityId={activityFilter}
+            isSaving={createTask.isPending}
+            onCreate={(input, done) => createTask.mutate(input, { onSuccess: done })}
+          />
+        )}
         {/* Filtri */}
         <div className="flex flex-wrap gap-2">
           <div className="relative w-full sm:w-64">

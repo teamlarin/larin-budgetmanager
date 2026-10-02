@@ -32,6 +32,7 @@ import {
   type ProjectTaskInput,
   type BudgetActivityOption,
 } from '@/hooks/useProjectTasks';
+import { supabase } from '@/integrations/supabase/client';
 
 const NONE = '__none__';
 
@@ -105,12 +106,19 @@ export const ProjectTaskFormSheet = ({
         (task?.description ? `<p>${task.description.replace(/\n/g, '<br />')}</p>` : '')
     );
     setAssigneeIds(task ? (task.assignee_ids?.length ? task.assignee_ids : task.assignee_id ? [task.assignee_id] : []) : []);
+    if (!task) {
+      // Nuova task: assegnatario predefinito = utente corrente
+      supabase.auth.getUser().then(({ data }) => {
+        const uid = data.user?.id;
+        if (uid) setAssigneeIds((prev) => (prev.length ? prev : [uid]));
+      });
+    }
     setStatus(task?.status || DEFAULT_TASK_STATUS);
     setPriority(task?.priority || 'medium');
     setStartDate(task?.start_date || null);
     setDueDate(task?.due_date || null);
     setEstimatedHours(task?.estimated_hours != null ? String(task.estimated_hours) : '');
-    setActivityId(task?.budget_item_id || initialBudgetItemId || NONE);
+    setActivityId(task?.budget_item_id || initialBudgetItemId || (activityOptions.length === 1 ? activityOptions[0].id : NONE));
     setRecurrenceRule(task?.recurrence_rule || 'none');
     setRecurrenceInterval(task?.recurrence_interval || 1);
     setRecurrenceEnd(task?.recurrence_end_date || null);
