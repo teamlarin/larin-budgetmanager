@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { getProjectResidualMargin } from "../_shared/residual-margin.ts";
+import { getProjectResidualMargin, formatMarginIt } from "../_shared/residual-margin.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,7 +33,8 @@ interface ProjectCompletedPayload {
   discipline?: string | null;
   billing_type?: string | null;
   billing_type_label?: string | null;
-  residual_margin_percentage?: number | null;
+  residual_margin_percentage?: string | null;
+  residual_margin_value?: number | null;
   completed_at: string;
 }
 
@@ -187,7 +188,8 @@ Deno.serve(async (req) => {
       billing_type_label: project.billing_type
         ? BILLING_TYPE_LABELS[project.billing_type] ?? project.billing_type
         : null,
-      residual_margin_percentage: await getProjectResidualMargin(supabase, project.id),
+      residual_margin_value: residualMarginValue,
+      residual_margin_percentage: formatMarginIt(residualMarginValue),
       completed_at: project.status_changed_at || new Date().toISOString(),
     };
 

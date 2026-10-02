@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { getProjectResidualMargin } from "../_shared/residual-margin.ts";
+import { getProjectResidualMargin, formatMarginIt } from "../_shared/residual-margin.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
