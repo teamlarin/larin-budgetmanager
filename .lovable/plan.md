@@ -1,37 +1,41 @@
-# Task da Slack con reazione 📌
+# Ore da vocale direttamente in TimeTrap
 
-## Come funziona per il team
-1. In un canale Slack collegato a un progetto TimeTrap, qualcuno aggiunge la reazione 📌 a un messaggio (anche dentro un thread).
-2. TimeTrap legge il messaggio (e, se è in un thread, il messaggio iniziale per il contesto) e crea una task nel progetto collegato a quel canale:
-   - **Titolo**: sintetizzato dall'AI (verbo + oggetto), descrizione con il testo originale e il link al messaggio Slack.
-   - **Assegnatario**: chi ha messo la 📌 (riconosciuto tramite email Slack = email TimeTrap). Se nel messaggio è citata una persona del team (@nome), viene assegnata a lei.
-   - **Scadenza**: solo se il messaggio la cita chiaramente ("entro venerdì").
-   - **Attività a budget**: quella più coerente scelta dall'AI tra le attività del progetto; se il progetto ne ha una sola, quella.
-   - **Stato**: Da fare.
-3. Il bot risponde nel thread: "Task creata: <titolo> → assegnata a X · Apri in TimeTrap".
-4. Nessun duplicato: una seconda 📌 sullo stesso messaggio non crea un'altra task (risponde con il link a quella esistente).
-5. Casi gestiti con risposta nel thread: canale non collegato a nessun progetto, utente Slack non riconosciuto in TimeTrap, progetto senza attività a budget.
+Dal documento "Time tracking Larin": oggi un vocale a Claude crea una riga in Notion. L'obiettivo è che lo stesso vocale crei direttamente le ore nel timesheet di TimeTrap.
 
-## Cosa serve da parte tua (una volta sola)
-L'attuale collegamento Slack di TimeTrap può solo inviare messaggi, non ricevere eventi come le reazioni. Serve una piccola **app Slack dedicata "TimeTrap"**:
-1. Ti fornisco un file di configurazione già pronto (manifest) da incollare su api.slack.com/apps → "Create from manifest".
-2. La installi nel workspace e mi copi due codici: **Bot Token** e **Signing Secret** (li salvo in modo sicuro).
-3. Inviti il bot `@TimeTrap` nei canali privati dei progetti (i pubblici sono automatici).
+## Mappatura dei campi
 
-Le notifiche Slack esistenti (aggiornamenti, chiusure, bozze) restano invariate.
+| Campo Notion | Campo TimeTrap | Esito |
+| --- | --- | --- |
+| Quando (data + fascia) | Giorno, ora inizio, ora fine | Corrisponde |
+| Ore | Calcolate da inizio/fine | Corrisponde (non serve dirle) |
+| Attività (titolo breve) | Inizio delle note | Corrisponde |
+| Note | Note dello slot | Corrisponde |
+| Cliente | Cliente, poi **progetto** | Manca un dato: TimeTrap registra le ore su un progetto, e un cliente può averne più di uno attivo |
+| Sottocategoria | **Attività a budget** del progetto | Da mappare: TimeTrap usa le attività del budget (es. "Grafiche social"), non un elenco fisso |
+| "Interno" | Un progetto interno (es. Larin - Operations 2026, Management & pianificazione 2026) | Da mappare: va scelto quale progetto interno |
+| Modalità (Riunione/Lavoro) | Nessun campo | Manca in TimeTrap |
+| Pianificazione (Previsto/Emergenza/Opportunità) | Nessun campo | Manca in TimeTrap |
+| Settimana ISO | Calcolata dalla data | Non serve |
+
+**In sintesi**, i dati bastano se:
+1. L'AI deduce il **progetto** dal cliente. Se il cliente ha più progetti attivi, si sceglie in base al contenuto del racconto, oppure lo si dice nel vocale ("progetto Personal Branding LinkedIn").
+2. La **sottocategoria** diventa un suggerimento per scegliere l'attività a budget più vicina.
+3. Si aggiungono due nuovi campi allo slot: **Modalità** e **Pianificazione**. Così l'analisi su emergenze e richieste improvvise resta possibile in TimeTrap.
+
+## Cosa costruire
+1. **Pulsante microfono "Registra ore a voce"** nel Calendario/Timesheet (da desktop e smartphone).
+2. Il vocale viene trascritto e l'AI estrae uno o più slot: giorno, inizio, fine, progetto, attività, modalità, pianificazione, titolo e note. Si possono raccontare più attività nello stesso vocale.
+3. **Schermata di revisione**: ogni slot proposto mostra i campi già compilati e modificabili. L'ora di fine viene segnalata se si sovrappone a slot esistenti. Si salva con "Conferma".
+4. Gli slot vengono creati come **ore confermate** dell'utente (stesso comportamento del timesheet manuale). L'avanzamento e i margini si aggiornano come sempre.
+5. **Campi Modalità e Pianificazione** disponibili anche nella finestra slot manuale (facoltativi) e come filtri e colonne nell'export del timesheet.
+6. In alternativa al microfono si può **incollare il testo** (utile per chi già detta a Claude o usa Notion).
 
 ## Dettagli tecnici
-- Nuova Edge Function `slack-events` (verify_jwt = false): gestisce `url_verification`, ignora i retry (`x-slack-retry-num`), verifica la firma HMAC sul body grezzo con `SLACK_SIGNING_SECRET`, risponde 200 subito e lavora in `EdgeRuntime.waitUntil`.
-- Evento `reaction_added` con `reaction` in (`pushpin`, `round_pushpin`); recupero messaggio con `conversations.replies`/`conversations.history`, utente con `users.info` (email) via `SLACK_BOT_TOKEN`.
-- Progetto: `projects.slack_channel_id = event.item.channel` (progetti approvati, non chiusi).
-- Utente: `profiles.email` = email Slack → creatore e assegnatario.
-- Estrazione AI (titolo, scadenza, attività, eventuale assegnatario) con lo stesso schema strutturato già usato in `extract-tasks-from-transcript`; ID validati contro team e attività del progetto.
-- Migrazione: colonne `project_tasks.source` (text, default null) e `source_ref` (text, es. `slack:<channel>:<ts>`) con indice unico parziale su `source_ref` per l'idempotenza.
-- Insert con service role + `project_task_assignees`; le notifiche di assegnazione esistenti partono dai trigger già presenti.
-- Risposta nel thread con `chat.postMessage` (`thread_ts`).
-- Manifest Slack con scope bot: `reactions:read`, `channels:history`, `groups:history`, `chat:write`, `users:read`, `users:read.email`; evento `reaction_added`; Request URL = URL della funzione `slack-events`.
-- Secrets richiesti: `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET` (richiesti dopo la creazione dell'app).
+- Migrazione: `activity_time_tracking.work_mode` (text: `riunione`/`lavoro`, nullable) e `planning_type` (text: `previsto`/`emergenza_cliente`/`opportunita`, nullable), validati con un trigger.
+- Registrazione audio nel browser (MediaRecorder) → nuova edge function `voice-timesheet`: trascrizione con `google/gemini-3.5-transcribe`, estrazione strutturata con `openai/gpt-6-astra` (schema JSON strict). Il contesto passato all'AI contiene: data odierna (Europe/Rome), progetti accessibili all'utente con cliente, attività a budget non prodotto, sottocategorie del documento.
+- Gli ID di progetto e attività restituiti vengono validati lato server contro i progetti dell'utente. L'insert avviene lato client dopo la conferma, con le stesse regole e RLS del timesheet attuale. Formato data `yyyy-MM-dd` (date-fns), orari `HH:mm`.
+- Gestione errori AI: 402 per crediti esauriti, 429 per troppe richieste, messaggio chiaro nella revisione.
 
-## Fuori perimetro (eventuale fase 2)
-- Creazione task da email/Gmail.
-- Scelta interattiva dell'attività con pulsanti Slack quando l'AI non è sicura.
+## Da confermare
+- Quale progetto interno usare per "Interno" in base alla sottocategoria (es. Gestione team / Meeting interni → Management & pianificazione 2026; Pre-sales → Sales & Accounting 2026).
+- Se i campi Modalità e Pianificazione vanno resi obbligatori o lasciati facoltativi.
