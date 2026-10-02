@@ -126,6 +126,13 @@ export const ProjectTaskFormSheet = ({
     setProjectSearch('');
   }, [open, task, initialBudgetItemId]);
 
+  // Opzioni attività caricate dopo l'apertura: preseleziona se unica
+  useEffect(() => {
+    if (open && !task && activityOptions.length === 1) {
+      setActivityId((prev) => (prev === NONE ? activityOptions[0].id : prev));
+    }
+  }, [open, task, activityOptions]);
+
   /** Reset parziale dopo un salvataggio riuscito con "Crea un'altra" attiva */
   useEffect(() => {
     if (!resetSignal) return;
