@@ -142,3 +142,9 @@ export async function getProjectResidualMargin(
     return null;
   }
 }
+
+/** Formatta il margine per fogli con locale italiano (evita che "46.16" diventi un orario). */
+export function formatMarginIt(value: number | null | undefined): string | null {
+  if (value === null || value === undefined || !Number.isFinite(value)) return null;
+  return `${value.toFixed(2).replace('.', ',')}%`;
+}
