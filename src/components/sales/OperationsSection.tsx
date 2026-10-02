@@ -60,8 +60,22 @@ export function OperationsSection({ year }: { year: number | null }) {
   const { data: utilization, isLoading: isLoadingUtilization } = useTeamUtilization(range);
   const { data: scopeRows = [], isLoading: isLoadingScope } = useScopeCreep(range);
   const { data: deliveryRows = [], isLoading: isLoadingDelivery } = useOnTimeDelivery(range);
+  // La customer satisfaction è in tempo reale: tutto l'anno, mese in corso incluso.
+  const satisfactionRange = useMemo(
+    () =>
+      year === null
+        ? null
+        : {
+            start: new Date(year, 0, 1),
+            end: new Date(year, 11, 31),
+            empty: false,
+            canPrev: false,
+            canNext: false,
+          },
+    [year]
+  );
   const { data: satisfactionRows = [], isLoading: isLoadingSatisfaction, isError: satisfactionError } =
-    useCustomerSatisfaction(range);
+    useCustomerSatisfaction(satisfactionRange);
 
   const [satisfactionMonth, setSatisfactionMonth] = useState<string>('all');
   const [satisfactionArea, setSatisfactionArea] = useState<string>('all');
