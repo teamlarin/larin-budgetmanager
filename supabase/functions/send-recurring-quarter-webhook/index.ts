@@ -197,7 +197,8 @@ Deno.serve(async (req) => {
           billing_type_label: project.billing_type
             ? BILLING_TYPE_LABELS[project.billing_type] ?? project.billing_type
             : null,
-          residual_margin_percentage: residualMargin,
+          residual_margin_value: residualMargin,
+          residual_margin_percentage: formatMarginIt(residualMargin),
           quarter_number: n,
           quarter_label: `Q${n}`,
           quarter_period_start: toDateOnly(periodStart),

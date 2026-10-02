@@ -169,6 +169,7 @@ Deno.serve(async (req) => {
     }
 
     // Build payload for Make
+    const residualMarginValue = await getProjectResidualMargin(supabase, project.id);
     const payload: ProjectCompletedPayload = {
       event_type: "project_completed",
       project_id: project.id,
