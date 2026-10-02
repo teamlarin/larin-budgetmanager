@@ -72,7 +72,7 @@ const schema = {
           assignee_id: { type: ["string", "null"] },
           due_date: { type: ["string", "null"], description: "YYYY-MM-DD" },
           budget_item_id: { type: ["string", "null"] },
-          priority: { type: "string", enum: ["low", "medium", "high", "urgent"] },
+          priority: { type: "string", enum: ["low", "medium", "high"] },
           quote: { type: ["string", "null"], description: "Frase della trascrizione da cui nasce la task" },
         },
       },
@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
         assignee_id: teamIds.has(t.assignee_id) ? t.assignee_id : null,
         due_date: /^\d{4}-\d{2}-\d{2}$/.test(t.due_date ?? "") ? t.due_date : null,
         budget_item_id: actIds.has(t.budget_item_id) ? t.budget_item_id : null,
-        priority: ["low", "medium", "high", "urgent"].includes(t.priority) ? t.priority : "medium",
+        priority: ["low", "medium", "high"].includes(t.priority) ? t.priority : "medium",
         quote: t.quote || null,
       }));
     return json({ tasks: clean });
