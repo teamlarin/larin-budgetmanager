@@ -1,7 +1,7 @@
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { format, parseISO, differenceInDays, startOfDay } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Plus, CalendarIcon, User, Trash2, Pencil, Link2, ListChecks, Repeat, X, Search, List, CalendarDays, CalendarClock, Download } from 'lucide-react';
+import { Plus, CalendarIcon, User, Trash2, Pencil, Link2, ListChecks, Repeat, X, Search, List, CalendarDays, CalendarClock, Download, Sparkles } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ import {
 } from '@/hooks/useProjectTasks';
 import { ProjectTaskFormSheet } from './ProjectTaskFormSheet';
 import { QuickAddTaskInput } from './QuickAddTaskInput';
+import { ExtractTasksFromMeetingDialog } from './ExtractTasksFromMeetingDialog';
 import { ImportWorkflowTasksDialog } from './ImportWorkflowTasksDialog';
 
 import type { TaskCalendarMode } from './ProjectTasksCalendar';
@@ -93,6 +94,7 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
   const importWorkflow = useImportWorkflowTasks(projectId);
   const workflowOptions = useWorkflowImportOptions(projectId);
   const [importOpen, setImportOpen] = useState(false);
+  const [meetOpen, setMeetOpen] = useState(false);
   const [activityFilter, setActivityFilter] = useState<string>('all');
 
 
@@ -270,6 +272,9 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
             </div>
             {!readOnly && (
               <>
+                <Button size="sm" variant="outline" onClick={() => setMeetOpen(true)}>
+                  <Sparkles className="h-4 w-4 mr-1" /> Estrai da Meet
+                </Button>
                 <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
                   <Download className="h-4 w-4 mr-1" /> Importa workflow
                 </Button>
@@ -563,6 +568,16 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
 
       />
 
+      {!readOnly && (
+        <ExtractTasksFromMeetingDialog
+          open={meetOpen}
+          onOpenChange={setMeetOpen}
+          projectId={projectId}
+          teamProfiles={profiles}
+          activityOptions={activityOptions}
+          createTask={(input) => createTask.mutateAsync(input)}
+        />
+      )}
       <ImportWorkflowTasksDialog
         open={importOpen}
         onOpenChange={setImportOpen}
