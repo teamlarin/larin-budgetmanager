@@ -82,11 +82,19 @@ const Workload = () => {
       const contractPeriods = (cpData || []) as any[];
 
       // Get time tracking entries for all users in the period
-      const { data: timeEntries } = await supabase
-        .from('activity_time_tracking')
-        .select('user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items(projects:project_id(is_billable))')
-        .gte('scheduled_date', fromDateStr)
-        .lte('scheduled_date', toDateStr);
+      const timeEntries: any[] = [];
+      for (let offset = 0; ; offset += 1000) {
+        const { data, error } = await supabase
+          .from('activity_time_tracking')
+          .select('id, user_id, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items(projects:project_id(is_billable))')
+          .gte('scheduled_date', fromDateStr)
+          .lte('scheduled_date', toDateStr)
+          .order('id')
+          .range(offset, offset + 999);
+        if (error || !data) break;
+        timeEntries.push(...data);
+        if (data.length < 1000) break;
+      }
 
       // Calculate workload per user
       const workloadMap: Record<string, UserWorkload> = {};
