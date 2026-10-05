@@ -28,6 +28,7 @@ interface UserMonthlyDetailProps {
   monthlyConfirmed: Record<string, number>; // keyed by yyyy-MM
   adjustments: Record<string, { hours: number; reason: string | null }>; // keyed by yyyy-MM
   monthlyExpected: Record<string, number>; // keyed by yyyy-MM
+  expectedOverrides?: Record<string, { hours: number; reason: string | null }>; // keyed by yyyy-MM
   canEdit: boolean;
   isConsuntivo?: boolean;
 }
@@ -39,6 +40,7 @@ export const UserMonthlyDetail = ({
   monthlyConfirmed,
   adjustments,
   monthlyExpected,
+  expectedOverrides = {},
   canEdit,
   isConsuntivo = false,
 }: UserMonthlyDetailProps) => {
@@ -48,6 +50,10 @@ export const UserMonthlyDetail = ({
   const [adjHours, setAdjHours] = useState('');
   const [adjReason, setAdjReason] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editingExpectedMonth, setEditingExpectedMonth] = useState<string | null>(null);
+  const [expHours, setExpHours] = useState('');
+  const [expReason, setExpReason] = useState('');
+  const [savingExpected, setSavingExpected] = useState(false);
 
   const formatHoursDisplay = (hours: number) => formatHours(hours).replace('.', ',');
 
@@ -71,6 +77,13 @@ export const UserMonthlyDetail = ({
     setAdjHours(existing ? String(existing.hours) : '0');
     setAdjReason(existing?.reason || '');
     setEditingMonth(monthKey);
+  };
+
+  const openEditExpected = (monthKey: string) => {
+    const existing = expectedOverrides[monthKey];
+    setExpHours(existing ? String(existing.hours) : String(Math.round((monthlyExpected[monthKey] || 0) * 2) / 2));
+    setExpReason(existing?.reason || '');
+    setEditingExpectedMonth(monthKey);
   };
 
   const handleSave = async () => {
@@ -105,6 +118,65 @@ export const UserMonthlyDetail = ({
       toast({ title: 'Errore', description: err.message || 'Impossibile salvare la rettifica', variant: 'destructive' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveExpected = async () => {
+    if (!editingExpectedMonth) return;
+    setSavingExpected(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non autenticato');
+
+      const monthDate = `${editingExpectedMonth}-01`;
+      const hours = parseFloat(expHours);
+      if (isNaN(hours) || hours < 0) throw new Error('Inserisci un numero di ore valido');
+
+      const { error } = await supabase
+        .from('user_expected_hours_overrides' as any)
+        .upsert({
+          user_id: userId,
+          month: monthDate,
+          expected_hours: hours,
+          reason: expReason.trim() || null,
+          created_by: user.id,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,month' });
+
+      if (error) throw error;
+
+      toast({ title: 'Ore previste salvate', description: `Ore previste per ${userName} aggiornate` });
+      queryClient.invalidateQueries({ queryKey: ['user-expected-hours-overrides'] });
+      setEditingExpectedMonth(null);
+    } catch (err: any) {
+      console.error('Expected hours save error:', err);
+      toast({ title: 'Errore', description: err.message || 'Impossibile salvare le ore previste', variant: 'destructive' });
+    } finally {
+      setSavingExpected(false);
+    }
+  };
+
+  const handleRemoveExpected = async () => {
+    if (!editingExpectedMonth) return;
+    setSavingExpected(true);
+    try {
+      const monthDate = `${editingExpectedMonth}-01`;
+      const { error } = await supabase
+        .from('user_expected_hours_overrides' as any)
+        .delete()
+        .eq('user_id', userId)
+        .eq('month', monthDate);
+
+      if (error) throw error;
+
+      toast({ title: 'Override rimosso', description: 'Le ore previste tornano al calcolo da contratto' });
+      queryClient.invalidateQueries({ queryKey: ['user-expected-hours-overrides'] });
+      setEditingExpectedMonth(null);
+    } catch (err: any) {
+      console.error('Expected hours delete error:', err);
+      toast({ title: 'Errore', description: err.message || 'Impossibile rimuovere l\'override', variant: 'destructive' });
+    } finally {
+      setSavingExpected(false);
     }
   };
 
@@ -147,7 +219,20 @@ export const UserMonthlyDetail = ({
                     )}
                   </TableCell>
                   <TableCell className="text-right text-sm font-medium">{formatHours(total)}</TableCell>
-                  <TableCell className="text-right text-sm">{isConsuntivo ? <span className="text-muted-foreground">—</span> : formatHours(row.expected)}</TableCell>
+                  <TableCell className="text-right text-sm">
+                    {isConsuntivo ? <span className="text-muted-foreground">—</span> : (
+                      <div className="flex items-center justify-end gap-1">
+                        <span className={expectedOverrides[row.month] ? 'text-primary font-medium' : ''} title={expectedOverrides[row.month]?.reason || (expectedOverrides[row.month] ? 'Valore impostato manualmente' : undefined)}>
+                          {formatHours(row.expected)}{expectedOverrides[row.month] ? '*' : ''}
+                        </span>
+                        {canEdit && (
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEditExpected(row.month)}>
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right text-sm">{isConsuntivo ? <span className="text-muted-foreground">—</span> : renderBalance(balance)}</TableCell>
                   {canEdit && (
                     <TableCell>
@@ -201,6 +286,58 @@ export const UserMonthlyDetail = ({
             <Button variant="outline" onClick={() => setEditingMonth(null)}>Annulla</Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? 'Salvataggio...' : 'Salva'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingExpectedMonth} onOpenChange={(open) => !open && setEditingExpectedMonth(null)}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Ore previste — {userName}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Mese</Label>
+              <p className="text-sm text-muted-foreground capitalize">
+                {editingExpectedMonth && format(new Date(`${editingExpectedMonth}-01`), 'MMMM yyyy', { locale: it })}
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="exp-hours">Ore previste manuali</Label>
+              <Input
+                id="exp-hours"
+                type="number"
+                step="0.5"
+                min="0"
+                value={expHours}
+                onChange={(e) => setExpHours(e.target.value)}
+                placeholder="es. 120"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Sostituisce il calcolo automatico da contratto per questo mese.
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="exp-reason">Motivazione</Label>
+              <Textarea
+                id="exp-reason"
+                value={expReason}
+                onChange={(e) => setExpReason(e.target.value)}
+                placeholder="es. Chiusura aziendale, accordo particolare..."
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {editingExpectedMonth && expectedOverrides[editingExpectedMonth] && (
+              <Button variant="destructive" onClick={handleRemoveExpected} disabled={savingExpected} className="sm:mr-auto">
+                Rimuovi override
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setEditingExpectedMonth(null)}>Annulla</Button>
+            <Button onClick={handleSaveExpected} disabled={savingExpected}>
+              {savingExpected ? 'Salvataggio...' : 'Salva'}
             </Button>
           </DialogFooter>
         </DialogContent>

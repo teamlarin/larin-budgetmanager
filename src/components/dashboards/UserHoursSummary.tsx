@@ -338,6 +338,28 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
     },
   });
 
+  // Load manual expected-hours overrides for the year
+  const { data: expectedOverridesMap = {} } = useQuery({
+    queryKey: ['user-expected-hours-overrides', selectedMonth.getFullYear()],
+    queryFn: async () => {
+      const yearStr = `${selectedMonth.getFullYear()}-01-01`;
+      const yearEndStr = `${selectedMonth.getFullYear()}-12-31`;
+      const { data } = await supabase
+        .from('user_expected_hours_overrides' as any)
+        .select('user_id, month, expected_hours, reason')
+        .gte('month', yearStr)
+        .lte('month', yearEndStr);
+
+      // keyed by `userId:yyyy-MM`
+      const map: Record<string, { hours: number; reason: string | null }> = {};
+      (data || []).forEach((row: any) => {
+        const monthKey = typeof row.month === 'string' ? row.month.substring(0, 7) : format(new Date(row.month), 'yyyy-MM');
+        map[`${row.user_id}:${monthKey}`] = { hours: Number(row.expected_hours), reason: row.reason };
+      });
+      return map;
+    },
+  });
+
   // Load carryover for the year
   const queryClient = useQueryClient();
   const { data: carryoverMap = {} } = useQuery({
@@ -480,6 +502,9 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
   const calculateExpectedHoursForUser = (user: UserHoursData, monthStart: Date, monthEnd: Date) => {
     // Consuntivo users have no expected hours
     if (user.contractType === 'consuntivo') return 0;
+    // Manual override wins over contract calculation
+    const override = expectedOverridesMap[`${user.id}:${format(monthStart, 'yyyy-MM')}`];
+    if (override) return override.hours;
     const contractData = getContractDataForDate(user, monthStart);
     if (!contractData) return 0; // No active contract
 
@@ -517,7 +542,20 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
       }
       return total;
     };
-  }, [monthlyWorkingDaysArr, contractPeriodsMap]);
+  }, [monthlyWorkingDaysArr, contractPeriodsMap, expectedOverridesMap]);
+
+  // Monthly expected-hours overrides map per user (for sub-component)
+  const getUserExpectedOverridesMap = (userId: string): Record<string, { hours: number; reason: string | null }> => {
+    const map: Record<string, { hours: number; reason: string | null }> = {};
+    const endMonthIndex = selectedMonth.getMonth();
+    const year = selectedMonth.getFullYear();
+    for (let m = 0; m <= endMonthIndex; m++) {
+      const key = format(new Date(year, m, 1), 'yyyy-MM');
+      const ov = expectedOverridesMap[`${userId}:${key}`];
+      if (ov) map[key] = ov;
+    }
+    return map;
+  };
 
   // Monthly expected hours map per user (for sub-component)
   const getMonthlyExpectedMap = (user: UserHoursData): Record<string, number> => {
@@ -880,7 +918,16 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
                               </TableCell>
                             )}
                             {!compactMode && (
-                              <TableCell className="text-right">{isConsuntivo ? <span className="text-muted-foreground">—</span> : formatHours(user.expectedHours)}</TableCell>
+                              <TableCell className="text-right">
+                                {isConsuntivo ? <span className="text-muted-foreground">—</span> : (
+                                  <>
+                                    {formatHours(user.expectedHours)}
+                                    {expectedOverridesMap[`${user.id}:${format(selectedMonth, 'yyyy-MM')}`] && (
+                                      <span className="ml-1 text-xs text-primary" title="Valore impostato manualmente">*</span>
+                                    )}
+                                  </>
+                                )}
+                              </TableCell>
                             )}
                             {!compactMode && (
                               <TableCell className="text-right">
@@ -952,6 +999,7 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
                                   monthlyConfirmed={ytdMonthlyMap[user.id] || {}}
                                   adjustments={getUserAdjustmentsMap(user.id)}
                                   monthlyExpected={getMonthlyExpectedMap(user)}
+                                  expectedOverrides={getUserExpectedOverridesMap(user.id)}
                                   canEdit={canEditAdjustments}
                                   isConsuntivo={isConsuntivo}
                                 />
