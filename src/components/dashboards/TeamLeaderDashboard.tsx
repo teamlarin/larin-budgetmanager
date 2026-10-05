@@ -294,12 +294,6 @@ export const TeamLeaderProjectsSection = ({ stats, recentProjects, projectsNearD
           </CardContent>
         </Card>
       </div>
-      <ProjectsGroupedView
-        projects={groupedProjects}
-        openGroups={openGroups}
-        onOpenGroupsChange={setOpenGroups}
-      />
-      <TeamLeaderMarginOverview projects={filteredRecentProjects} margins={margins} isLoading={marginsLoading} />
       <WeeklyUpdatesWidget filterAreas={leaderAreas} />
 
     </div>
