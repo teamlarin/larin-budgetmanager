@@ -162,7 +162,7 @@ export const AdminOperationsDashboard = ({
         </div>
 
         {/* Critical Projects */}
-        {criticalProjects.length > 0 && (
+        {false && criticalProjects.length > 0 && (
           <Card className="border-destructive/50">
             <CardHeader>
               <div className="flex items-center gap-2">
