@@ -1091,7 +1091,7 @@ const Dashboard = () => {
 
       // Calculate 6 months ago for productivity trend
       const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-      const sixMonthsAgoStr = sixMonthsAgo.toISOString().split('T')[0];
+      const sixMonthsAgoStr = format(sixMonthsAgo, 'yyyy-MM-dd');
 
       // Parallel fetch all data we need
       const [
@@ -1143,12 +1143,26 @@ const Dashboard = () => {
           .select('target_productivity_percentage')
           .eq('id', userId)
           .maybeSingle(),
-        // 6-month entries for productivity trend (single query instead of 6)
-        supabase
-          .from('activity_time_tracking')
-          .select('scheduled_date, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items(projects:project_id(is_billable))')
-          .eq('user_id', userId)
-          .gte('scheduled_date', sixMonthsAgoStr)
+        // 6-month entries for productivity trend (paginated: >1000 rows)
+        (async () => {
+          const all: any[] = [];
+          const pageSize = 1000;
+          const monthEndStr = format(endOfMonth(now), 'yyyy-MM-dd');
+          for (let offset = 0; ; offset += pageSize) {
+            const { data, error } = await supabase
+              .from('activity_time_tracking')
+              .select('id, scheduled_date, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, budget_items(projects:project_id(is_billable))')
+              .eq('user_id', userId)
+              .gte('scheduled_date', sixMonthsAgoStr)
+              .lte('scheduled_date', monthEndStr)
+              .order('id')
+              .range(offset, offset + pageSize - 1);
+            if (error) return { data: all, error };
+            all.push(...(data || []));
+            if (!data || data.length < pageSize) break;
+          }
+          return { data: all, error: null };
+        })()
       ]);
 
       const todayEntries = todayEntriesResult.data;
