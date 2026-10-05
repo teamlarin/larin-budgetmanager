@@ -121,6 +121,65 @@ export const UserMonthlyDetail = ({
     }
   };
 
+  const handleSaveExpected = async () => {
+    if (!editingExpectedMonth) return;
+    setSavingExpected(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non autenticato');
+
+      const monthDate = `${editingExpectedMonth}-01`;
+      const hours = parseFloat(expHours);
+      if (isNaN(hours) || hours < 0) throw new Error('Inserisci un numero di ore valido');
+
+      const { error } = await supabase
+        .from('user_expected_hours_overrides' as any)
+        .upsert({
+          user_id: userId,
+          month: monthDate,
+          expected_hours: hours,
+          reason: expReason.trim() || null,
+          created_by: user.id,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,month' });
+
+      if (error) throw error;
+
+      toast({ title: 'Ore previste salvate', description: `Ore previste per ${userName} aggiornate` });
+      queryClient.invalidateQueries({ queryKey: ['user-expected-hours-overrides'] });
+      setEditingExpectedMonth(null);
+    } catch (err: any) {
+      console.error('Expected hours save error:', err);
+      toast({ title: 'Errore', description: err.message || 'Impossibile salvare le ore previste', variant: 'destructive' });
+    } finally {
+      setSavingExpected(false);
+    }
+  };
+
+  const handleRemoveExpected = async () => {
+    if (!editingExpectedMonth) return;
+    setSavingExpected(true);
+    try {
+      const monthDate = `${editingExpectedMonth}-01`;
+      const { error } = await supabase
+        .from('user_expected_hours_overrides' as any)
+        .delete()
+        .eq('user_id', userId)
+        .eq('month', monthDate);
+
+      if (error) throw error;
+
+      toast({ title: 'Override rimosso', description: 'Le ore previste tornano al calcolo da contratto' });
+      queryClient.invalidateQueries({ queryKey: ['user-expected-hours-overrides'] });
+      setEditingExpectedMonth(null);
+    } catch (err: any) {
+      console.error('Expected hours delete error:', err);
+      toast({ title: 'Errore', description: err.message || 'Impossibile rimuovere l\'override', variant: 'destructive' });
+    } finally {
+      setSavingExpected(false);
+    }
+  };
+
   const renderBalance = (value: number) => (
     <span className={`font-medium ${value > 0 ? 'text-primary' : value < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
       {value > 0 ? '+' : ''}{formatHoursDisplay(value)}
