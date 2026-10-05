@@ -28,6 +28,7 @@ interface UserMonthlyDetailProps {
   monthlyConfirmed: Record<string, number>; // keyed by yyyy-MM
   adjustments: Record<string, { hours: number; reason: string | null }>; // keyed by yyyy-MM
   monthlyExpected: Record<string, number>; // keyed by yyyy-MM
+  expectedOverrides?: Record<string, { hours: number; reason: string | null }>; // keyed by yyyy-MM
   canEdit: boolean;
   isConsuntivo?: boolean;
 }
@@ -39,6 +40,7 @@ export const UserMonthlyDetail = ({
   monthlyConfirmed,
   adjustments,
   monthlyExpected,
+  expectedOverrides = {},
   canEdit,
   isConsuntivo = false,
 }: UserMonthlyDetailProps) => {
@@ -48,6 +50,10 @@ export const UserMonthlyDetail = ({
   const [adjHours, setAdjHours] = useState('');
   const [adjReason, setAdjReason] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editingExpectedMonth, setEditingExpectedMonth] = useState<string | null>(null);
+  const [expHours, setExpHours] = useState('');
+  const [expReason, setExpReason] = useState('');
+  const [savingExpected, setSavingExpected] = useState(false);
 
   const formatHoursDisplay = (hours: number) => formatHours(hours).replace('.', ',');
 
