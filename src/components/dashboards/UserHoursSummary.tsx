@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatHours } from '@/lib/utils';
 import { UserMonthlyDetail } from './UserMonthlyDetail';
 import { getEffectiveContractForDate, type ContractPeriodRow } from '@/lib/contractPeriods';
+import { getAreaLabel } from '@/lib/areaColors';
 
 interface ClosureDay {
   date: string;
@@ -68,6 +69,7 @@ function getClosureDatesForYear(year: number, closureDayDefs: ClosureDay[]): Dat
 interface UserHoursData {
   id: string;
   name: string;
+  area?: string | null;
   confirmedHours: number;
   billableHours: number;
   monthBancaOre: number;
@@ -113,6 +115,7 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
   );
   const [exporting, setExporting] = useState<string | null>(null);
   const [contractFilter, setContractFilter] = useState<ContractFilter>('all');
+  const [areaFilter, setAreaFilter] = useState<string>('all');
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
 
@@ -215,6 +218,7 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
         return {
           id: profile.id,
           name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Utente',
+          area: profile.area || null,
           confirmedHours: hours.total,
           billableHours: hours.billable,
           monthBancaOre: hours.bancaOre,
@@ -595,7 +599,10 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
     }
   };
 
+  const availableAreas = Array.from(new Set(usersData.map(u => u.area).filter(Boolean))) as string[];
+
   const filteredUsersData = usersData.filter(user => {
+    if (areaFilter !== 'all' && user.area !== areaFilter) return false;
     if (contractFilter === 'all') return true;
     if (contractFilter === 'employees') return user.contractType === 'full-time' || user.contractType === 'part-time';
     if (contractFilter === 'freelance') return user.contractType === 'freelance';
@@ -755,6 +762,17 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
                     <SelectItem value="consuntivo">Consuntivo</SelectItem>
                   </SelectContent>
                 </Select>
+                <Select value={areaFilter} onValueChange={setAreaFilter}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tutte le aree</SelectItem>
+                    {availableAreas.map(a => (
+                      <SelectItem key={a} value={a}>{getAreaLabel(a as any)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground ml-2">
                   <Users className="h-4 w-4" />
                   {usersWithExpectedHours.length}
@@ -790,49 +808,7 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
                   </p>
                 </div>
               </div>
-            ) : (
-              <div className="grid grid-cols-6 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
-                <div>
-                  <p className="text-xs text-muted-foreground">Ore confermate</p>
-                  <p className="text-lg font-bold">{formatHours(totalConfirmed)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Ore previste</p>
-                  <p className="text-lg font-bold">{formatHours(totalExpected)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Saldo mese</p>
-                  <p className={`text-lg font-bold ${totalConfirmed - totalExpected > 0 ? 'text-primary' : totalConfirmed - totalExpected < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                    {totalConfirmed - totalExpected > 0 ? '+' : ''}{formatHoursDisplay(totalConfirmed - totalExpected)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Saldo anno</p>
-                  <p className={`text-lg font-bold ${totalYtdBalance > 0 ? 'text-primary' : totalYtdBalance < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                    {totalYtdBalance > 0 ? '+' : ''}{formatHoursDisplay(totalYtdBalance)}
-                    {totalCarryover !== 0 && (
-                      <span className="text-xs font-normal text-muted-foreground ml-1">(rip. {totalCarryover > 0 ? '+' : ''}{formatHoursDisplay(totalCarryover)})</span>
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Completamento</p>
-                  <p className="text-lg font-bold">
-                    {totalExpected > 0 ? Math.round((totalConfirmed / totalExpected) * 100) : 0}%
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3" /> Prod. billable media
-                  </p>
-                  <p className="text-lg font-bold">
-                    {usersWithExpectedHours.length > 0
-                      ? Math.round(usersWithExpectedHours.reduce((sum, u) => sum + u.actualProductivity, 0) / usersWithExpectedHours.length)
-                      : 0}%
-                  </p>
-                </div>
-              </div>
-            )}
+            ) : null}
 
             <div className="max-h-[500px] overflow-y-auto">
               <Table>
@@ -842,12 +818,10 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
                     <TableHead>Utente</TableHead>
                     <TableHead>Tipo</TableHead>
                     {!compactMode && <TableHead className="text-right">Confermate</TableHead>}
-                    {!compactMode && <TableHead className="text-right">Recuperate</TableHead>}
                     {!compactMode && <TableHead className="text-right">Previste</TableHead>}
-                    {!compactMode && <TableHead className="text-right">Saldo</TableHead>}
+                    {!compactMode && <TableHead className="text-right">Saldo mese</TableHead>}
                     <TableHead className="text-right">Saldo anno</TableHead>
                     {!compactMode && <TableHead className="text-right">Riporto</TableHead>}
-                    {!compactMode && <TableHead className="w-[120px]">Progresso</TableHead>}
                     <TableHead className="text-center">Prod. Billable</TableHead>
                     {!compactMode && <TableHead className="w-[80px]"></TableHead>}
                   </TableRow>
@@ -906,11 +880,6 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
                               </TableCell>
                             )}
                             {!compactMode && (
-                              <TableCell className="text-right">
-                                {user.monthBancaOre !== 0 ? formatHours(user.monthBancaOre) : <span className="text-muted-foreground">—</span>}
-                              </TableCell>
-                            )}
-                            {!compactMode && (
                               <TableCell className="text-right">{isConsuntivo ? <span className="text-muted-foreground">—</span> : formatHours(user.expectedHours)}</TableCell>
                             )}
                             {!compactMode && (
@@ -946,11 +915,6 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
                                 </div>
                               </TableCell>
                             )}
-                            {!compactMode && (
-                              <TableCell>
-                                {isConsuntivo ? <span className="text-muted-foreground text-xs">—</span> : <Progress value={getPercentage(adjustedConfirmed, user.expectedHours)} className="h-2" />}
-                              </TableCell>
-                            )}
                             <TableCell className="text-center">
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
                                 isAboveTarget
@@ -980,7 +944,7 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
                           </TableRow>
                           {isExpanded && (
                             <TableRow>
-                              <TableCell colSpan={11} className="p-3">
+                              <TableCell colSpan={9} className="p-3">
                                 <UserMonthlyDetail
                                   userId={user.id}
                                   userName={user.name}
