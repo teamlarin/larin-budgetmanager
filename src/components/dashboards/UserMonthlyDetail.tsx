@@ -79,6 +79,13 @@ export const UserMonthlyDetail = ({
     setEditingMonth(monthKey);
   };
 
+  const openEditExpected = (monthKey: string) => {
+    const existing = expectedOverrides[monthKey];
+    setExpHours(existing ? String(existing.hours) : String(Math.round((monthlyExpected[monthKey] || 0) * 2) / 2));
+    setExpReason(existing?.reason || '');
+    setEditingExpectedMonth(monthKey);
+  };
+
   const handleSave = async () => {
     if (!editingMonth) return;
     setSaving(true);
