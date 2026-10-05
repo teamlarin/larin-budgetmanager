@@ -219,7 +219,20 @@ export const UserMonthlyDetail = ({
                     )}
                   </TableCell>
                   <TableCell className="text-right text-sm font-medium">{formatHours(total)}</TableCell>
-                  <TableCell className="text-right text-sm">{isConsuntivo ? <span className="text-muted-foreground">—</span> : formatHours(row.expected)}</TableCell>
+                  <TableCell className="text-right text-sm">
+                    {isConsuntivo ? <span className="text-muted-foreground">—</span> : (
+                      <div className="flex items-center justify-end gap-1">
+                        <span className={expectedOverrides[row.month] ? 'text-primary font-medium' : ''} title={expectedOverrides[row.month]?.reason || (expectedOverrides[row.month] ? 'Valore impostato manualmente' : undefined)}>
+                          {formatHours(row.expected)}{expectedOverrides[row.month] ? '*' : ''}
+                        </span>
+                        {canEdit && (
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEditExpected(row.month)}>
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right text-sm">{isConsuntivo ? <span className="text-muted-foreground">—</span> : renderBalance(balance)}</TableCell>
                   {canEdit && (
                     <TableCell>
@@ -273,6 +286,58 @@ export const UserMonthlyDetail = ({
             <Button variant="outline" onClick={() => setEditingMonth(null)}>Annulla</Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? 'Salvataggio...' : 'Salva'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingExpectedMonth} onOpenChange={(open) => !open && setEditingExpectedMonth(null)}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Ore previste — {userName}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Mese</Label>
+              <p className="text-sm text-muted-foreground capitalize">
+                {editingExpectedMonth && format(new Date(`${editingExpectedMonth}-01`), 'MMMM yyyy', { locale: it })}
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="exp-hours">Ore previste manuali</Label>
+              <Input
+                id="exp-hours"
+                type="number"
+                step="0.5"
+                min="0"
+                value={expHours}
+                onChange={(e) => setExpHours(e.target.value)}
+                placeholder="es. 120"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Sostituisce il calcolo automatico da contratto per questo mese.
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="exp-reason">Motivazione</Label>
+              <Textarea
+                id="exp-reason"
+                value={expReason}
+                onChange={(e) => setExpReason(e.target.value)}
+                placeholder="es. Chiusura aziendale, accordo particolare..."
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {editingExpectedMonth && expectedOverrides[editingExpectedMonth] && (
+              <Button variant="destructive" onClick={handleRemoveExpected} disabled={savingExpected} className="sm:mr-auto">
+                Rimuovi override
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setEditingExpectedMonth(null)}>Annulla</Button>
+            <Button onClick={handleSaveExpected} disabled={savingExpected}>
+              {savingExpected ? 'Salvataggio...' : 'Salva'}
             </Button>
           </DialogFooter>
         </DialogContent>
