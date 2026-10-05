@@ -918,7 +918,16 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
                               </TableCell>
                             )}
                             {!compactMode && (
-                              <TableCell className="text-right">{isConsuntivo ? <span className="text-muted-foreground">—</span> : formatHours(user.expectedHours)}</TableCell>
+                              <TableCell className="text-right">
+                                {isConsuntivo ? <span className="text-muted-foreground">—</span> : (
+                                  <>
+                                    {formatHours(user.expectedHours)}
+                                    {expectedOverridesMap[`${user.id}:${format(selectedMonth, 'yyyy-MM')}`] && (
+                                      <span className="ml-1 text-xs text-primary" title="Valore impostato manualmente">*</span>
+                                    )}
+                                  </>
+                                )}
+                              </TableCell>
                             )}
                             {!compactMode && (
                               <TableCell className="text-right">
@@ -990,6 +999,7 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
                                   monthlyConfirmed={ytdMonthlyMap[user.id] || {}}
                                   adjustments={getUserAdjustmentsMap(user.id)}
                                   monthlyExpected={getMonthlyExpectedMap(user)}
+                                  expectedOverrides={getUserExpectedOverridesMap(user.id)}
                                   canEdit={canEditAdjustments}
                                   isConsuntivo={isConsuntivo}
                                 />
