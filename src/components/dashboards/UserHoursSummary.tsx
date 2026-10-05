@@ -542,7 +542,20 @@ export const UserHoursSummary = ({ compactMode = false, filterUserIds }: UserHou
       }
       return total;
     };
-  }, [monthlyWorkingDaysArr, contractPeriodsMap]);
+  }, [monthlyWorkingDaysArr, contractPeriodsMap, expectedOverridesMap]);
+
+  // Monthly expected-hours overrides map per user (for sub-component)
+  const getUserExpectedOverridesMap = (userId: string): Record<string, { hours: number; reason: string | null }> => {
+    const map: Record<string, { hours: number; reason: string | null }> = {};
+    const endMonthIndex = selectedMonth.getMonth();
+    const year = selectedMonth.getFullYear();
+    for (let m = 0; m <= endMonthIndex; m++) {
+      const key = format(new Date(year, m, 1), 'yyyy-MM');
+      const ov = expectedOverridesMap[`${userId}:${key}`];
+      if (ov) map[key] = ov;
+    }
+    return map;
+  };
 
   // Monthly expected hours map per user (for sub-component)
   const getMonthlyExpectedMap = (user: UserHoursData): Record<string, number> => {
