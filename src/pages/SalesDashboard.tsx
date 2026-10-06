@@ -123,9 +123,9 @@ const SalesDashboard = () => {
       <Card>
         <CardHeader>
           <CardTitle>Margine di profitto</CardTitle>
-          <CardDescription>Valore del progetto meno ore interne, overhead e costi esterni</CardDescription>
+          <CardDescription>Marginalità ponderata per cliente: progetti completati nel {year} e canoni ricorrenti attivi per i soli mesi di competenza dell'anno. Progetti interni esclusi.</CardDescription>
         </CardHeader>
-        <CardContent>{isLoadingProjects || isLoadingMargins ? <CardSkeleton /> : <ProfitabilitySection projects={salesProjects} margins={projectMargins} />}</CardContent>
+        <CardContent>{isLoadingProjects || isLoadingMargins || year === null ? <CardSkeleton /> : <ProfitabilitySection year={year} projects={salesProjects} margins={projectMargins} />}</CardContent>
       </Card>
 
         </TabsContent>
