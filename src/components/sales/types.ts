@@ -99,4 +99,9 @@ export interface SalesProjectRow {
   client_id: string | null;
   client_name: string;
   margin_percentage: number | null;
+  billing_type?: string | null;
+  project_status?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  actual_end_date?: string | null;
 }

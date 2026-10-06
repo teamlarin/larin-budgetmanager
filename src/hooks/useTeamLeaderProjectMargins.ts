@@ -15,6 +15,9 @@ export interface ProjectMarginData {
   confirmedHours: number;
   totalHours: number;
   projectType: string;
+  /** Presenti solo se richiesto un periodo. */
+  periodLaborCost?: number;
+  periodExternalCost?: number;
 }
 
 export type { MarginStatus };
@@ -42,6 +45,7 @@ interface MarginsResponse {
  */
 export function useTeamLeaderProjectMargins(
   projects: Array<{ id: string; margin_percentage?: number | null }>,
+  period?: { start: string; end: string } | null,
 ) {
   const projectIds = projects.map((p) => p.id).sort();
   const targetByProject = new Map(
@@ -49,13 +53,13 @@ export function useTeamLeaderProjectMargins(
   );
 
   return useQuery({
-    queryKey: ['team-leader-project-margins', projectIds.join(',')],
+    queryKey: ['team-leader-project-margins', projectIds.join(','), period?.start ?? null, period?.end ?? null],
     enabled: projectIds.length > 0,
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<Map<string, ProjectMarginRow>> => {
       const { data, error } = await supabase.functions.invoke<MarginsResponse>(
         'calculate-project-margins',
-        { body: { project_ids: projectIds } },
+        { body: { project_ids: projectIds, ...(period ? { period_start: period.start, period_end: period.end } : {}) } },
       );
       if (error) {
         console.warn('calculate-project-margins failed', error);

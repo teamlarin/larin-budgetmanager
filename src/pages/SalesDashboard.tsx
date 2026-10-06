@@ -18,7 +18,7 @@ import { ConversionSection } from '@/components/sales/ConversionSection';
 import { SalesBySalespersonChart } from '@/components/sales/SalesBySalespersonChart';
 import { RevenueHealthSection } from '@/components/sales/RevenueHealthSection';
 import { MrrHealthSection } from '@/components/sales/MrrHealthSection';
-import { ProfitabilitySection } from '@/components/sales/ProfitabilitySection';
+import { ProfitabilitySection, getProfitabilityPeriod } from '@/components/sales/ProfitabilitySection';
 import { OperationsSection } from '@/components/sales/OperationsSection';
 import { useTeamLeaderProjectMargins } from '@/hooks/useTeamLeaderProjectMargins';
 import {
@@ -57,8 +57,9 @@ const SalesDashboard = () => {
   const { data: conversion = [], isLoading: isLoadingConversion } = useOfferConversion(year);
   const { data: revenueHealth, isLoading: isLoadingRevenue } = useRevenueHealth(year);
   const { data: mrrHealth, isLoading: isLoadingMrr } = useMrrHealth();
+  const profitabilityPeriod = useMemo(() => year === null ? null : getProfitabilityPeriod(year), [year]);
   const { data: salesProjects = [], isLoading: isLoadingProjects } = useSalesProjects(year);
-  const { data: projectMargins = new Map(), isLoading: isLoadingMargins } = useTeamLeaderProjectMargins(salesProjects);
+  const { data: projectMargins = new Map(), isLoading: isLoadingMargins } = useTeamLeaderProjectMargins(salesProjects, profitabilityPeriod);
 
   const vendutoTotale = useMemo(() => {
     if (revenueMix) return Number(revenueMix.totale ?? 0);
