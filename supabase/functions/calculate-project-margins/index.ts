@@ -52,9 +52,14 @@ serve(async (req) => {
 
     // Get optional project_ids filter from request body
     let projectIds: string[] | null = null;
+    // Finestra opzionale (yyyy-MM-dd, inclusiva): restituisce anche i costi del periodo.
+    let periodStart: string | null = null;
+    let periodEnd: string | null = null;
     try {
       const body = await req.json();
       projectIds = body.project_ids || null;
+      periodStart = typeof body.period_start === 'string' ? body.period_start : null;
+      periodEnd = typeof body.period_end === 'string' ? body.period_end : null;
     } catch {
       // No body or invalid JSON, will fetch all approved projects
     }
@@ -114,7 +119,7 @@ serve(async (req) => {
         'budget_items',
         'id, project_id, is_product, total_cost, vat_rate, hours_worked, category',
       ),
-      fetchAllProjectRows('project_additional_costs', 'id, project_id, amount'),
+      fetchAllProjectRows('project_additional_costs', 'id, project_id, amount, created_at'),
       supabaseAdmin
         .from('app_settings')
         .select('setting_value')
@@ -259,6 +264,12 @@ serve(async (req) => {
     // confirmedHours uses ADJUSTED hours — affects pack progress %
     const laborCostsPerProject = new Map<string, number>();
     const confirmedHoursPerProject = new Map<string, number>();
+    const periodLaborPerProject = new Map<string, number>();
+    const inPeriod = (ts: string | null | undefined) => {
+      if (!periodStart || !periodEnd || !ts) return false;
+      const d = String(ts).slice(0, 10);
+      return d >= periodStart && d <= periodEnd;
+    };
     
     timeTracking.forEach(tt => {
       const projectId = budgetItemToProject.get(tt.budget_item_id);
@@ -276,10 +287,14 @@ serve(async (req) => {
 
       laborCostsPerProject.set(projectId, (laborCostsPerProject.get(projectId) || 0) + laborCost);
       confirmedHoursPerProject.set(projectId, (confirmedHoursPerProject.get(projectId) || 0) + adjustedHours);
+      if (inPeriod(tt.actual_start_time)) {
+        periodLaborPerProject.set(projectId, (periodLaborPerProject.get(projectId) || 0) + laborCost);
+      }
     });
 
     // Calculate external costs per project (only additional costs, products excluded)
     const externalCostsPerProject = new Map<string, number>();
+    const periodExternalPerProject = new Map<string, number>();
 
     // Only additional costs count as external costs
     additionalCosts.forEach(ac => {
@@ -287,6 +302,9 @@ serve(async (req) => {
         ac.project_id, 
         (externalCostsPerProject.get(ac.project_id) || 0) + (ac.amount || 0)
       );
+      if (inPeriod(ac.created_at)) {
+        periodExternalPerProject.set(ac.project_id, (periodExternalPerProject.get(ac.project_id) || 0) + (ac.amount || 0));
+      }
     });
 
     // Calculate margins
@@ -301,6 +319,8 @@ serve(async (req) => {
       confirmedHours: number;
       totalHours: number;
       projectType: string;
+      periodLaborCost?: number;
+      periodExternalCost?: number;
     }> = {};
 
     const packProjectsToUpdate: { id: string; progress: number }[] = [];
@@ -350,6 +370,10 @@ serve(async (req) => {
         confirmedHours: Math.round(confirmedHours * 100) / 100,
         totalHours,
         projectType: project.project_type || '',
+        ...(periodStart && periodEnd ? {
+          periodLaborCost: Math.round((periodLaborPerProject.get(project.id) || 0) * 100) / 100,
+          periodExternalCost: Math.round((periodExternalPerProject.get(project.id) || 0) * 100) / 100,
+        } : {}),
       };
     });
 

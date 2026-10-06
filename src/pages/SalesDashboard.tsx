@@ -18,7 +18,7 @@ import { ConversionSection } from '@/components/sales/ConversionSection';
 import { SalesBySalespersonChart } from '@/components/sales/SalesBySalespersonChart';
 import { RevenueHealthSection } from '@/components/sales/RevenueHealthSection';
 import { MrrHealthSection } from '@/components/sales/MrrHealthSection';
-import { ProfitabilitySection } from '@/components/sales/ProfitabilitySection';
+import { ProfitabilitySection, getProfitabilityPeriod } from '@/components/sales/ProfitabilitySection';
 import { OperationsSection } from '@/components/sales/OperationsSection';
 import { useTeamLeaderProjectMargins } from '@/hooks/useTeamLeaderProjectMargins';
 import {
@@ -57,8 +57,9 @@ const SalesDashboard = () => {
   const { data: conversion = [], isLoading: isLoadingConversion } = useOfferConversion(year);
   const { data: revenueHealth, isLoading: isLoadingRevenue } = useRevenueHealth(year);
   const { data: mrrHealth, isLoading: isLoadingMrr } = useMrrHealth();
+  const profitabilityPeriod = useMemo(() => year === null ? null : getProfitabilityPeriod(year), [year]);
   const { data: salesProjects = [], isLoading: isLoadingProjects } = useSalesProjects(year);
-  const { data: projectMargins = new Map(), isLoading: isLoadingMargins } = useTeamLeaderProjectMargins(salesProjects);
+  const { data: projectMargins = new Map(), isLoading: isLoadingMargins } = useTeamLeaderProjectMargins(salesProjects, profitabilityPeriod);
 
   const vendutoTotale = useMemo(() => {
     if (revenueMix) return Number(revenueMix.totale ?? 0);
@@ -122,9 +123,9 @@ const SalesDashboard = () => {
       <Card>
         <CardHeader>
           <CardTitle>Margine di profitto</CardTitle>
-          <CardDescription>Valore del progetto meno ore interne, overhead e costi esterni</CardDescription>
+          <CardDescription>Marginalità ponderata per cliente: progetti completati nel {year} e canoni ricorrenti attivi per i soli mesi di competenza dell'anno. Progetti interni esclusi.</CardDescription>
         </CardHeader>
-        <CardContent>{isLoadingProjects || isLoadingMargins ? <CardSkeleton /> : <ProfitabilitySection projects={salesProjects} margins={projectMargins} />}</CardContent>
+        <CardContent>{isLoadingProjects || isLoadingMargins || year === null ? <CardSkeleton /> : <ProfitabilitySection year={year} projects={salesProjects} margins={projectMargins} />}</CardContent>
       </Card>
 
         </TabsContent>

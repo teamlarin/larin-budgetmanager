@@ -152,7 +152,7 @@ export function useSalesProjects(year: number | null) {
       const end = `${year}-12-31`;
       const { data, error } = await supabase
         .from('projects')
-        .select('id, name, client_id, margin_percentage, clients(name)')
+        .select('id, name, client_id, margin_percentage, billing_type, project_status, start_date, end_date, actual_end_date, clients(name)')
         .neq('area', 'interno')
         .or(`start_date.lte.${end},start_date.is.null`)
         .or(`end_date.gte.${start},end_date.is.null`)
@@ -166,6 +166,11 @@ export function useSalesProjects(year: number | null) {
           client_id: row.client_id,
           client_name: row.clients?.name ?? 'Senza cliente',
           margin_percentage: row.margin_percentage,
+          billing_type: row.billing_type,
+          project_status: row.project_status,
+          start_date: row.start_date,
+          end_date: row.end_date,
+          actual_end_date: row.actual_end_date,
         })) as SalesProjectRow[];
     },
     enabled: year !== null,
