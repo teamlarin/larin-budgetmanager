@@ -32,6 +32,28 @@ import { DISCIPLINE_LABELS, getDisciplineColor } from '@/lib/disciplineColors';
 import { AREA_LABELS, getAreaColor } from '@/lib/areaColors';
 import { fetchAllClients } from '@/lib/fetchAllClients';
 
+// Contacts are many-to-many via client_contact_clients (plus legacy client_contacts.client_id)
+async function loadClientContacts(clientId: string) {
+  const { data: links } = await supabase
+    .from('client_contact_clients')
+    .select('contact_id, is_primary')
+    .eq('client_id', clientId);
+  const primary = new Set((links || []).filter((l: any) => l.is_primary).map((l: any) => l.contact_id));
+  const linkIds = (links || []).map((l: any) => l.contact_id);
+  const cols = 'id, first_name, last_name, role, email, phone';
+  const [{ data: linked }, { data: legacy }] = await Promise.all([
+    linkIds.length
+      ? supabase.from('client_contacts').select(cols).in('id', linkIds)
+      : Promise.resolve({ data: [] as any[] }),
+    supabase.from('client_contacts').select(cols).eq('client_id', clientId),
+  ]);
+  const map = new Map<string, any>();
+  [...(linked || []), ...(legacy || [])].forEach((c: any) => map.set(c.id, c));
+  return [...map.values()].sort((a, b) =>
+    (primary.has(b.id) ? 1 : 0) - (primary.has(a.id) ? 1 : 0) ||
+    (a.first_name || '').localeCompare(b.first_name || ''));
+}
+
 const ProjectBudget = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
