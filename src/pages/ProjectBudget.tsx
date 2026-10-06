@@ -214,12 +214,7 @@ const ProjectBudget = () => {
         setClientContacts([]);
         return;
       }
-      const { data } = await supabase
-        .from('client_contacts')
-        .select('id, first_name, last_name, role, email, phone')
-        .eq('client_id', project.client_id)
-        .order('first_name');
-      setClientContacts(data || []);
+      setClientContacts(await loadClientContacts(project.client_id));
     };
     fetchContacts();
   }, [project?.client_id]);
@@ -610,12 +605,7 @@ const ProjectBudget = () => {
                   contacts={clientContacts}
                   onContactCreated={async () => {
                     if (project.client_id) {
-                      const { data } = await supabase
-                        .from('client_contacts')
-                        .select('id, first_name, last_name, role, email, phone')
-                        .eq('client_id', project.client_id)
-                        .order('first_name');
-                      setClientContacts(data || []);
+                      setClientContacts(await loadClientContacts(project.client_id));
                     }
                   }}
                   triggerClassName="h-7 w-[220px]"
