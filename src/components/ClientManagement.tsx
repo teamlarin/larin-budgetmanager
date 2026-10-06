@@ -255,18 +255,18 @@ export const ClientManagement = () => {
     
     // Fetch contact counts for each client
     if (data && data.length > 0) {
-      const { data: contacts } = await supabase
-        .from("client_contacts")
-        .select("client_id")
-        .in("client_id", data.map(client => client.id));
-      
-      if (contacts) {
-        const counts: Record<string, number> = {};
-        contacts.forEach(c => {
+      const ids = data.map(client => client.id);
+      const counts: Record<string, number> = {};
+      for (let i = 0; i < ids.length; i += 100) {
+        const { data: links } = await supabase
+          .from("client_contact_clients")
+          .select("client_id")
+          .in("client_id", ids.slice(i, i + 100));
+        (links || []).forEach((c: any) => {
           counts[c.client_id] = (counts[c.client_id] || 0) + 1;
         });
-        setContactCounts(counts);
       }
+      setContactCounts(counts);
     }
     
     setLoading(false);
