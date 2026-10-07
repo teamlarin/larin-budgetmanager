@@ -54,11 +54,16 @@ const decisionConfig: Record<'accettata' | 'rifiutata', { label: string; variant
 const formatDateTime = (value: string) => format(new Date(value), "d MMM yyyy 'alle' HH:mm", { locale: it });
 
 // Testo di accompagnamento standard: chi invia parte da qui e lo adatta.
-export const buildDefaultSendMessage = (clientName?: string | null) => {
+export const buildDefaultSendMessage = (
+  clientName?: string | null,
+  offerReference?: string | null,
+  offerTitle?: string | null,
+) => {
   const greeting = clientName?.trim() ? `Gentile ${clientName.trim()},` : 'Gentile Cliente,';
+  const ref = [offerReference?.trim(), offerTitle?.trim()].filter(Boolean).join(' – ');
   return `${greeting}
 
-in allegato trova l'offerta richiesta, che può consultare e accettare direttamente online tramite il pulsante qui sotto.
+le inviamo l'offerta${ref ? ` ${ref}` : ''}, che può consultare e accettare direttamente online tramite il pulsante qui sotto.
 
 Resto a disposizione per qualsiasi chiarimento o per valutare insieme eventuali modifiche.`;
 };
