@@ -183,8 +183,8 @@ Deno.serve(async (req) => {
       if (endBound) endBound.setUTCHours(0, 0, 0, 0);
 
       for (let n = 1; n <= 200; n++) {
-        // trigger date = start_date + n*3 months - 5 days (inviato al primo run feriale delle 12:00)
-        const triggerDate = addMonthsAndDays(project.start_date, n * 3, -5);
+        // trigger date = start_date + n*3 months - 7 days (inviato al primo run feriale delle 12:00)
+        const triggerDate = addMonthsAndDays(project.start_date, n * 3, -7);
         if (triggerDate > today) break;
 
         // period start/end (without offset)
