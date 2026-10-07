@@ -54,11 +54,16 @@ const decisionConfig: Record<'accettata' | 'rifiutata', { label: string; variant
 const formatDateTime = (value: string) => format(new Date(value), "d MMM yyyy 'alle' HH:mm", { locale: it });
 
 // Testo di accompagnamento standard: chi invia parte da qui e lo adatta.
-export const buildDefaultSendMessage = (clientName?: string | null) => {
+export const buildDefaultSendMessage = (
+  clientName?: string | null,
+  offerReference?: string | null,
+  offerTitle?: string | null,
+) => {
   const greeting = clientName?.trim() ? `Gentile ${clientName.trim()},` : 'Gentile Cliente,';
+  const ref = [offerReference?.trim(), offerTitle?.trim()].filter(Boolean).join(' – ');
   return `${greeting}
 
-in allegato trova l'offerta richiesta, che può consultare e accettare direttamente online tramite il pulsante qui sotto.
+le inviamo l'offerta${ref ? ` ${ref}` : ''}, che può consultare e accettare direttamente online tramite il pulsante qui sotto.
 
 Resto a disposizione per qualsiasi chiarimento o per valutare insieme eventuali modifiche.`;
 };
@@ -68,6 +73,7 @@ interface OfferPublicLinkPanelProps {
   offerReference: string;
   clientEmail: string | null;
   clientName?: string | null;
+  offerTitle?: string | null;
   versions: { id: string; version_number: number }[];
   canManage: boolean;
   hasSentVersion: boolean;
@@ -78,6 +84,7 @@ export const OfferPublicLinkPanel = ({
   offerReference,
   clientEmail,
   clientName,
+  offerTitle,
   versions,
   canManage,
   hasSentVersion,
@@ -89,7 +96,7 @@ export const OfferPublicLinkPanel = ({
   const [expiryDaysInput, setExpiryDaysInput] = useState('30');
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
   const [sendTo, setSendTo] = useState(clientEmail ?? '');
-  const defaultSendMessage = useMemo(() => buildDefaultSendMessage(clientName), [clientName]);
+  const defaultSendMessage = useMemo(() => buildDefaultSendMessage(clientName, offerReference, offerTitle), [clientName, offerReference, offerTitle]);
   const [sendMessage, setSendMessage] = useState(defaultSendMessage);
   const [messageEdited, setMessageEdited] = useState(false);
 

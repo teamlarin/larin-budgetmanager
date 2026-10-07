@@ -81,7 +81,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { data: offer, error: offerError } = await supabase
       .from('offers')
-      .select('id, year, number, client_id, current_version_id')
+      .select('id, year, number, title, client_id, current_version_id')
       .eq('id', offer_id)
       .maybeSingle();
     if (offerError || !offer) {
@@ -175,9 +175,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     const linkUrl = `${siteUrl}/offerta/${publicLinkToken}`;
     const reference = `${offer.year}/${offer.number}`;
+    const title = (offer.title ?? '').trim();
     const senderName = [callerProfile.first_name, callerProfile.last_name].filter(Boolean).join(' ').trim();
 
-    const subject = `Offerta ${reference} da Larin`;
+    const subject = title ? `Offerta ${reference} – ${title} | Larin` : `Offerta ${reference} da Larin`;
 
     const messageParagraph = message?.trim()
       ? `<p style="font-size: 15px; white-space: pre-line;">${escapeHtml(message.trim())}</p>`
@@ -200,12 +201,12 @@ const handler = async (req: Request): Promise<Response> => {
             <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 0;">Larin</h1>
           </div>
           <div style="background-color: #ffffff; padding: 32px 40px;">
-            <h2 style="color: #1a3330; font-size: 22px; font-weight: 700; margin: 0 0 16px;">La sua offerta è pronta</h2>
-            <p style="font-size: 15px;">Gentile ${escapeHtml(client.name)},</p>
-            <p style="font-size: 15px;">Le inviamo l'offerta <strong>${reference}</strong>, a disposizione per essere consultata e, se concorda, accettata online.</p>
-            ${messageParagraph}
+            <h2 style="color: #1a3330; font-size: 22px; font-weight: 700; margin: 0 0 16px;">${title ? escapeHtml(title) : 'La sua offerta è pronta'}</h2>
+            ${messageParagraph || `<p style="font-size: 15px;">Gentile ${escapeHtml(client.name)},</p>
+            <p style="font-size: 15px;">Le inviamo l'offerta <strong>${reference}${title ? ` – ${escapeHtml(title)}` : ''}</strong>, a disposizione per essere consultata e, se concorda, accettata online.</p>`}
             <div style="background-color: #f2f8f6; padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid #cce5df;">
               <p style="margin: 6px 0; font-size: 15px;"><strong>Offerta:</strong> ${reference}</p>
+              ${title ? `<p style="margin: 6px 0; font-size: 15px;"><strong>Oggetto:</strong> ${escapeHtml(title)}</p>` : ''}
               <p style="margin: 6px 0; font-size: 15px;"><strong>Importo:</strong> ${Number(version.offered_total).toFixed(2)} €</p>
               ${validityLine}
             </div>

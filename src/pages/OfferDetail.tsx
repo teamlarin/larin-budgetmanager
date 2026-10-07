@@ -931,6 +931,7 @@ const OfferDetail = () => {
           offerReference={`${offer.year}/${offer.number}`}
           clientEmail={offer.clients?.email ?? null}
           clientName={offer.clients?.name ?? null}
+          offerTitle={offer.title}
           versions={versions}
           canManage={canManage}
           // create_offer_public_link (e l'invio, che la richiama se manca un
