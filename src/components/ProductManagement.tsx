@@ -39,6 +39,7 @@ interface Product {
   category: string;
   net_price: number;
   gross_price: number;
+  product_nature?: string | null;
   created_at: string;
 }
 
@@ -495,6 +496,7 @@ export const ProductManagement = () => {
                   <TableHead>Codice</TableHead>
                   <TableHead>Nome</TableHead>
                   <TableHead>Categoria</TableHead>
+                  <TableHead>Natura</TableHead>
                   <TableHead>Modalità di Pagamento</TableHead>
                   <TableHead className="text-right">Prezzo Netto</TableHead>
                   <TableHead className="text-right">Azioni</TableHead>
@@ -515,6 +517,11 @@ export const ProductManagement = () => {
                       </div>
                     </TableCell>
                     <TableCell>{product.category}</TableCell>
+                    <TableCell>
+                      <Badge variant={product.product_nature === 'ricorrente' ? 'default' : product.product_nature === 'a_giornate' ? 'secondary' : 'outline'} className="text-xs whitespace-nowrap">
+                        {product.product_nature === 'ricorrente' ? 'Ricorrente' : product.product_nature === 'a_giornate' ? 'A giornate' : 'Una tantum'}
+                      </Badge>
+                    </TableCell>
                     <TableCell>
                       {paymentSplitsByProduct[product.id]?.length > 0 ? (
                         <div className="flex flex-col gap-1">
