@@ -180,13 +180,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     const subject = title ? `Offerta ${reference} – ${title} | Larin` : `Offerta ${reference} da Larin`;
 
+    const P = 'margin: 0 0 14px; font-size: 15px; color: #21282A;';
     const messageParagraph = message?.trim()
-      ? `<p style="font-size: 15px; white-space: pre-line;">${escapeHtml(message.trim())}</p>`
+      ? `<p style="${P} white-space: pre-line;">${escapeHtml(message.trim())}</p>`
       : '';
 
-    const validityLine = version.valid_until
-      ? `<p style="margin: 6px 0; font-size: 15px;"><strong>Valida fino al:</strong> ${new Date(version.valid_until).toLocaleDateString('it-IT')}</p>`
-      : '';
+    const fmtEur = (n: number) => new Intl.NumberFormat('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n) || 0) + ' €';
+    const row = (label: string, value: string) => `<tr><td style="padding: 6px 0; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #8A9092; width: 140px; vertical-align: top;">${label}</td><td style="padding: 6px 0; font-size: 15px; color: #21282A;">${value}</td></tr>`;
+    const validityLine = version.valid_until ? row('Valida fino al', new Date(version.valid_until).toLocaleDateString('it-IT')) : '';
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -195,29 +196,43 @@ const handler = async (req: Request): Promise<Response> => {
         <meta charset="utf-8">
         <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap" rel="stylesheet">
       </head>
-      <body style="font-family: Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a3330; margin: 0; padding: 20px; background-color: #f2f8f6;">
-        <div style="max-width: 600px; margin: 0 auto; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 25px -8px rgba(61,190,170,0.25);">
-          <div style="background: linear-gradient(135deg, #3dbeaa, #fac320); padding: 30px 40px; text-align: center;">
-            <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 0;">Larin</h1>
+      <body style="font-family: Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #21282A; margin: 0; padding: 32px 16px; background-color: #F5F4F1;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E2E1DC; border-radius: 6px; box-shadow: 0 2px 12px rgba(33,40,42,0.05);">
+          <div style="padding: 36px 44px 20px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse: collapse;"><tr>
+              <td style="vertical-align: middle; padding-right: 12px;">
+                <div style="width: 30px; height: 30px; border: 1.5px solid #21282A; border-radius: 50%; text-align: center; line-height: 0;">
+                  <div style="padding-top: 7px;"><span style="display:inline-block;width:4px;height:4px;border-radius:50%;background:#21282A;"></span><br><span style="display:inline-block;width:4px;height:4px;border-radius:50%;background:#21282A;margin-top:2px;"></span><br><span style="display:inline-block;width:4px;height:4px;border-radius:50%;background:#21282A;margin-top:2px;"></span></div>
+                </div>
+              </td>
+              <td style="vertical-align: middle;">
+                <div style="font-size: 18px; font-weight: 700; letter-spacing: 0.22em; color: #21282A; line-height: 1;">LARIN</div>
+                <div style="font-size: 9px; letter-spacing: 0.24em; color: #8A9092; margin-top: 4px;">CONNECT THE DOTS</div>
+              </td>
+            </tr></table>
+            <div style="width: 36px; height: 3px; background-color: #F7DB45; margin-top: 22px;"></div>
           </div>
-          <div style="background-color: #ffffff; padding: 32px 40px;">
-            <h2 style="color: #1a3330; font-size: 22px; font-weight: 700; margin: 0 0 16px;">${title ? escapeHtml(title) : 'La sua offerta è pronta'}</h2>
-            ${messageParagraph || `<p style="font-size: 15px;">Gentile ${escapeHtml(client.name)},</p>
-            <p style="font-size: 15px;">Le inviamo l'offerta <strong>${reference}${title ? ` – ${escapeHtml(title)}` : ''}</strong>, a disposizione per essere consultata e, se concorda, accettata online.</p>`}
-            <div style="background-color: #f2f8f6; padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid #cce5df;">
-              <p style="margin: 6px 0; font-size: 15px;"><strong>Offerta:</strong> ${reference}</p>
-              ${title ? `<p style="margin: 6px 0; font-size: 15px;"><strong>Oggetto:</strong> ${escapeHtml(title)}</p>` : ''}
-              <p style="margin: 6px 0; font-size: 15px;"><strong>Importo:</strong> ${Number(version.offered_total).toFixed(2)} €</p>
-              ${validityLine}
+          <div style="padding: 8px 44px 36px;">
+            <div style="font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #8A9092; margin-bottom: 6px;">Offerta ${reference}</div>
+            <h1 style="color: #21282A; font-size: 24px; font-weight: 600; line-height: 1.3; margin: 0 0 22px;">${title ? escapeHtml(title) : 'La sua offerta è pronta'}</h1>
+            ${messageParagraph || `<p style="${P}">Gentile ${escapeHtml(client.name)},</p>
+            <p style="${P}">Le inviamo l'offerta <strong>${reference}${title ? ` – ${escapeHtml(title)}` : ''}</strong>, a disposizione per essere consultata e, se concorda, accettata online.</p>`}
+            <div style="background-color: #FAF9F7; border: 1px solid #E2E1DC; border-radius: 4px; padding: 16px 22px; margin: 24px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+                ${row('Offerta', reference)}
+                ${title ? row('Oggetto', escapeHtml(title)) : ''}
+                ${row('Importo', `<strong>${fmtEur(version.offered_total)}</strong>`)}
+                ${validityLine}
+              </table>
             </div>
-            <div style="text-align: center; margin: 28px 0;">
-              <a href="${linkUrl}" style="display: inline-block; background-color: #3dbeaa; color: #ffffff; text-decoration: none; font-weight: 600; padding: 14px 28px; border-radius: 999px; font-size: 15px;">Apri l'offerta</a>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${linkUrl}" style="display: inline-block; background-color: #21282A; color: #FFFFFF; text-decoration: none; font-weight: 600; padding: 14px 32px; border-radius: 999px; font-size: 14px; letter-spacing: 0.04em;">Apri l'offerta</a>
             </div>
-            <p style="font-size: 13px; color: #527a73;">Se il pulsante non funziona, copi e incolli questo indirizzo nel browser:<br>${linkUrl}</p>
-            <p style="font-size: 15px; margin-top: 24px;">Cordiali saluti,<br>${senderName ? `${escapeHtml(senderName)} - Larin` : 'Il team Larin'}</p>
+            <p style="font-size: 12px; color: #8A9092; word-break: break-all;">Se il pulsante non funziona, copi e incolli questo indirizzo nel browser:<br>${linkUrl}</p>
+            <p style="font-size: 15px; color: #4E5758; margin-top: 26px;">Cordiali saluti,<br><span style="color: #21282A;">${senderName ? `${escapeHtml(senderName)} – Larin` : 'Il team Larin'}</span></p>
           </div>
-          <div style="background-color: #f2f8f6; padding: 20px 40px; text-align: center; border-top: 1px solid #cce5df;">
-            <p style="color: #527a73; font-size: 12px; margin: 0;">Larin</p>
+          <div style="padding: 18px 44px; border-top: 1px solid #E2E1DC; text-align: center;">
+            <p style="color: #8A9092; font-size: 10px; letter-spacing: 0.22em; margin: 0;">LARIN · CONNECT THE DOTS</p>
           </div>
         </div>
       </body>
