@@ -450,6 +450,20 @@ export const OfferPaymentPlanSection = ({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {isMixed && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg border p-3">
+              <p className="data-label">Quota a progetto</p>
+              <p className="text-lg font-semibold">€{offeredTotal.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground">Coperta dal piano a tranche</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="data-label">Quota canone ricorrente</p>
+              <p className="text-lg font-semibold">€{(offeredTotalProp - offeredTotal).toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground">Fatturata tramite abbonamento dopo l'accettazione</p>
+            </div>
+          </div>
+        )}
         {billingMode === 'importo_finito' ? (
           <div className="rounded-lg border p-4 space-y-3">
             <div className="flex items-center justify-between">
