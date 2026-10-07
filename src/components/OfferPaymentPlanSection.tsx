@@ -100,6 +100,8 @@ function computeDueDatePreview(term: PaymentTermRow, documentDate: Date): Date |
 interface OfferPaymentPlanSectionProps {
   offerVersionId: string;
   offeredTotal: number;
+  /** Quota a progetto su cui far quadrare le tranche (offerte miste con canoni). */
+  planTarget?: number;
   billingMode: BillingMode;
   canManage: boolean;
   isBozza: boolean;
@@ -108,13 +110,16 @@ interface OfferPaymentPlanSectionProps {
 
 export const OfferPaymentPlanSection = ({
   offerVersionId,
-  offeredTotal,
+  offeredTotal: offeredTotalProp,
+  planTarget,
   billingMode,
   canManage,
   isBozza,
   onBillingModeChange,
 }: OfferPaymentPlanSectionProps) => {
   const { toast } = useToast();
+  const offeredTotal = planTarget ?? offeredTotalProp;
+  const isMixed = planTarget !== undefined && Math.abs(planTarget - offeredTotalProp) > 0.009;
   const queryClient = useQueryClient();
 
   // Le tranche (come le righe) si modificano solo in bozza; la maturazione
@@ -469,7 +474,7 @@ export const OfferPaymentPlanSection = ({
                 />
                 <div className="flex justify-between items-center text-sm flex-wrap gap-1">
                   <span className="text-muted-foreground">
-                    Coperto: €{balance.sum.toFixed(2)} di €{offeredTotal.toFixed(2)}
+                    Coperto: €{balance.sum.toFixed(2)} di €{offeredTotal.toFixed(2)}{isMixed ? ' (quota a progetto, canoni esclusi)' : ''}
                   </span>
                   <span className={balance.withinTolerance ? 'text-green-600 font-medium' : 'text-destructive font-medium'}>
                     {balance.withinTolerance

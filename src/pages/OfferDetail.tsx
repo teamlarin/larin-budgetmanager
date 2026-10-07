@@ -31,6 +31,7 @@ import { OfferPaymentPlanSection } from '@/components/OfferPaymentPlanSection';
 import { OfferPublicLinkPanel } from '@/components/offers/OfferPublicLinkPanel';
 import type { Database } from '@/integrations/supabase/types';
 import { createProjectFromOffer } from '@/lib/createProjectFromOffer';
+import { ActivateRecurringDialog } from '@/components/offers/ActivateRecurringDialog';
 
 type OfferLineRow = Database['public']['Tables']['offer_lines']['Row'];
 type OfferVersionRow = Database['public']['Tables']['offer_versions']['Row'];
@@ -44,6 +45,7 @@ type OfferDetailRow = {
   project_id: string | null;
   current_version_id: string | null;
   origin: string;
+  client_id: string | null;
   budget_id: string | null;
   legacy_quote_id: string | null;
   legacy_quote_number: string | null;
@@ -107,7 +109,7 @@ const OfferDetail = () => {
       const { data, error } = await supabase
         .from('offers')
         .select(`
-          id, year, number, title, project_id, current_version_id, origin, budget_id, legacy_quote_id, legacy_quote_number,
+          id, year, number, title, client_id, project_id, current_version_id, origin, budget_id, legacy_quote_id, legacy_quote_number,
           clients ( id, name, email ),
           projects ( id, name ),
           budgets:budget_id ( id, name, project_id )
@@ -334,6 +336,37 @@ const OfferDetail = () => {
   }, [availableProducts]);
 
   const selectedProduct = selectedProductId ? productById[selectedProductId] : undefined;
+
+  // Quote dell'offerta: righe con prodotto ricorrente = canone, il resto = progetto.
+  // Lo sconto globale (totale offerto vs netto righe) si ripartisce in proporzione.
+  const split = useMemo(() => {
+    const recNet = editingLines.reduce(
+      (s, l) => s + (l.product_id && productById[l.product_id]?.product_nature === 'ricorrente' ? Number(l.line_total || 0) : 0),
+      0,
+    );
+    const ratio = linesNetTotal > 0 ? offeredTotalValue / linesNetTotal : 1;
+    const recurring = Math.round(recNet * ratio * 100) / 100;
+    const firstRec = editingLines.find((l) => l.product_id && productById[l.product_id]?.product_nature === 'ricorrente');
+    return {
+      recurring,
+      oneOff: Math.round((offeredTotalValue - recurring) * 100) / 100,
+      recurringProductId: firstRec?.product_id ?? null,
+      vatRate: Number(firstRec?.vat_rate ?? 22),
+    };
+  }, [editingLines, productById, linesNetTotal, offeredTotalValue]);
+
+  const [activateOpen, setActivateOpen] = useState(false);
+  const { data: linkedSubscriptions = [], refetch: refetchSubscriptions } = useQuery({
+    queryKey: ['offer-subscriptions', offerId],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from as any)('subscriptions')
+        .select('id, description, periodicity, status, project_id, projects:project_id ( id, name )')
+        .eq('offer_id', offerId);
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; description: string; periodicity: string; status: string; project_id: string | null; projects: { id: string; name: string } | null }>;
+    },
+    enabled: !!offerId,
+  });
 
   const filteredProducts = useMemo(() => {
     const q = productSearch.trim().toLowerCase();
@@ -641,6 +674,35 @@ const OfferDetail = () => {
         </Alert>
       )}
 
+      {selectedVersion?.status === 'accettata' && split.recurring > 0 && (
+        <Alert>
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+            {linkedSubscriptions.length === 0 ? (
+              <>
+                <span>
+                  <strong>Canone ricorrente da attivare</strong> (€{split.recurring.toFixed(2)}): attiva l'abbonamento
+                  e, se serve, il progetto operativo annuale.
+                </span>
+                {canManage && <Button size="sm" onClick={() => setActivateOpen(true)}>Attiva canone</Button>}
+              </>
+            ) : (
+              <span className="flex flex-col gap-1">
+                {linkedSubscriptions.map((s) => (
+                  <span key={s.id}>
+                    Abbonamento collegato:{' '}
+                    <Link to="/subscriptions" className="text-primary hover:underline">{s.description}</Link>
+                    {' '}· {s.status}
+                    {s.projects && (
+                      <> · Progetto: <Link to={`/projects/${s.projects.id}`} className="text-primary hover:underline">{s.projects.name}</Link></>
+                    )}
+                  </span>
+                ))}
+              </span>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -855,6 +917,7 @@ const OfferDetail = () => {
         <OfferPaymentPlanSection
           offerVersionId={selectedVersion.id}
           offeredTotal={offeredTotalValue}
+          planTarget={split.recurring > 0 ? split.oneOff : undefined}
           billingMode={selectedVersion.billing_mode}
           canManage={canManage}
           isBozza={isBozza}
@@ -968,7 +1031,32 @@ const OfferDetail = () => {
           onOpenChange={setManualDecisionOpen}
           offerVersionId={selectedVersion.id}
           offerId={offer.id}
-          onRecorded={() => { refetchVersions(); refetchOffer(); }}
+          onRecorded={() => {
+            refetchVersions();
+            refetchOffer();
+            if (split.recurring > 0) setActivateOpen(true);
+          }}
+        />
+      )}
+
+      {split.recurring > 0 && (
+        <ActivateRecurringDialog
+          open={activateOpen}
+          onOpenChange={setActivateOpen}
+          offer={{
+            id: offer.id,
+            title: offer.title,
+            year: offer.year,
+            number: offer.number,
+            client_id: offer.client_id ?? offer.clients?.id ?? null,
+            clientName: offer.clients?.name ?? null,
+            project_id: offer.project_id,
+            projectName: offer.projects?.name ?? null,
+          }}
+          recurringTotal={split.recurring}
+          recurringProductId={split.recurringProductId}
+          vatRate={split.vatRate}
+          onActivated={() => { refetchSubscriptions(); refetchOffer(); }}
         />
       )}
     </div>
