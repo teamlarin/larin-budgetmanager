@@ -1135,12 +1135,33 @@ const Sezione = ({ titolo, children }: { titolo: string; children: React.ReactNo
 );
 
 /** Il totale è l'unico numero che il cliente deve ricordare: sta da solo. */
-const Totale = ({ valore }: { valore: number }) => (
-  <div className="mt-8 flex items-baseline justify-between border-t border-[#21282A] pt-4">
-    <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-[#8A9092]">Totale offerto</span>
-    <span className="text-2xl font-medium tabular-nums">{formatCurrency(valore)}</span>
-  </div>
-);
+const Totale = ({ valore, aliquote = [] }: { valore: number; aliquote?: number[] }) => {
+  const uniche = [...new Set(aliquote.map(Number))];
+  const aliquota = uniche.length === 1 ? uniche[0] : null;
+  const iva = aliquota !== null ? Math.round(valore * aliquota) / 100 : null;
+  return (
+    <div className="mt-8 border-t border-[#21282A] pt-4">
+      {iva !== null && (
+        <div className="mb-3 space-y-1.5 text-sm">
+          <div className="flex justify-between text-[#4E5758]">
+            <span>Imponibile</span>
+            <span className="tabular-nums">{formatCurrency(valore)}</span>
+          </div>
+          <div className="flex justify-between text-[#4E5758]">
+            <span>IVA {formatPercent(aliquota!)}</span>
+            <span className="tabular-nums">{formatCurrency(iva)}</span>
+          </div>
+        </div>
+      )}
+      <div className="flex items-baseline justify-between">
+        <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-[#8A9092]">
+          {iva !== null ? 'Totale IVA inclusa' : 'Totale offerto (IVA esclusa)'}
+        </span>
+        <span className="text-2xl font-medium tabular-nums">{formatCurrency(iva !== null ? valore + iva : valore)}</span>
+      </div>
+    </div>
+  );
+};
 
 /**
  * Schermata unica per tutti gli esiti che non mostrano il documento (revocato,
