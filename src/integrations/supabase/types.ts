@@ -4612,6 +4612,7 @@ export type Database = {
           offer_id: string | null
           periodicity: Database["public"]["Enums"]["subscription_periodicity"]
           product_id: string | null
+          project_id: string | null
           start_date: string
           status: Database["public"]["Enums"]["subscription_status"]
           updated_at: string
@@ -4633,6 +4634,7 @@ export type Database = {
           offer_id?: string | null
           periodicity: Database["public"]["Enums"]["subscription_periodicity"]
           product_id?: string | null
+          project_id?: string | null
           start_date: string
           status?: Database["public"]["Enums"]["subscription_status"]
           updated_at?: string
@@ -4654,6 +4656,7 @@ export type Database = {
           offer_id?: string | null
           periodicity?: Database["public"]["Enums"]["subscription_periodicity"]
           product_id?: string | null
+          project_id?: string | null
           start_date?: string
           status?: Database["public"]["Enums"]["subscription_status"]
           updated_at?: string
@@ -4699,6 +4702,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -5709,6 +5719,7 @@ export type Database = {
           offer_id: string | null
           periodicity: Database["public"]["Enums"]["subscription_periodicity"]
           product_id: string | null
+          project_id: string | null
           start_date: string
           status: Database["public"]["Enums"]["subscription_status"]
           updated_at: string
@@ -5896,6 +5907,14 @@ export type Database = {
       get_offer_version_effective_discount_percentage: {
         Args: { _offer_version_id: string }
         Returns: number
+      }
+      get_offer_version_split: {
+        Args: { _offer_version_id: string }
+        Returns: {
+          offered_total: number
+          one_off_total: number
+          recurring_total: number
+        }[]
       }
       get_profiles_by_roles: {
         Args: { role_filter: Database["public"]["Enums"]["app_role"][] }

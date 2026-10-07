@@ -1,0 +1,1 @@
+ALTER FUNCTION public.get_offer_version_split(uuid) SECURITY INVOKER;
