@@ -13,6 +13,7 @@ import { z } from "zod";
 import { Plus, Trash2 } from "lucide-react";
 
 const OTHER_CATEGORY = "__other__";
+type ProductNature = "una_tantum" | "ricorrente" | "a_giornate";
 
 const productSchema = z.object({
   code: z
@@ -68,6 +69,7 @@ interface Product {
   category: string;
   net_price: number;
   gross_price: number;
+  product_nature?: string | null;
 }
 
 interface ProductFormDialogProps {
@@ -85,13 +87,17 @@ export const ProductFormDialog = ({
 }: ProductFormDialogProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    code: string; name: string; description: string; category: string;
+    net_price: string; gross_price: string; product_nature: ProductNature;
+  }>({
     code: "",
     name: "",
     description: "",
     category: "",
     net_price: "",
     gross_price: "",
+    product_nature: "una_tantum",
   });
   const [paymentSplits, setPaymentSplits] = useState<PaymentSplit[]>([]);
   // true quando l'utente sta scrivendo una categoria non presente nel listino
@@ -173,6 +179,7 @@ export const ProductFormDialog = ({
         category: editingProduct.category,
         net_price: editingProduct.net_price.toString(),
         gross_price: grossPrice,
+        product_nature: (editingProduct.product_nature as ProductNature) || "una_tantum",
       });
       setCustomCategory(false);
     } else {
@@ -201,6 +208,7 @@ export const ProductFormDialog = ({
       category: "",
       net_price: "",
       gross_price: "",
+      product_nature: "una_tantum",
     });
     setPaymentSplits([]);
     setCustomCategory(false);
@@ -296,6 +304,7 @@ export const ProductFormDialog = ({
       name: result.data.name,
       description: result.data.description || null,
       category: result.data.category,
+      product_nature: formData.product_nature,
       net_price: parseFloat(result.data.net_price),
       gross_price: parseFloat(result.data.gross_price),
     };
@@ -470,6 +479,25 @@ export const ProductFormDialog = ({
                 </Select>
               )}
             </div>
+          </div>
+          <div>
+            <Label htmlFor="product_nature">Natura del prodotto *</Label>
+            <Select
+              value={formData.product_nature}
+              onValueChange={(val) => setFormData({ ...formData, product_nature: val as ProductNature })}
+            >
+              <SelectTrigger id="product_nature">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="una_tantum">Una tantum</SelectItem>
+                <SelectItem value="ricorrente">Ricorrente (canone)</SelectItem>
+                <SelectItem value="a_giornate">A giornate</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              I prodotti collegati a Fatture in Cloud vengono riallineati ogni notte in base alla categoria (CANONI = ricorrente).
+            </p>
           </div>
           <div>
             <Label htmlFor="name">Nome Prodotto *</Label>
