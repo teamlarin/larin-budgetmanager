@@ -3070,6 +3070,50 @@ export type Database = {
           },
         ]
       }
+      project_completed_webhook_queue: {
+        Row: {
+          attempts: number
+          completed_at: string
+          created_at: string
+          last_error: string | null
+          project_id: string
+          send_after: string
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string
+          created_at?: string
+          last_error?: string | null
+          project_id: string
+          send_after?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string
+          created_at?: string
+          last_error?: string | null
+          project_id?: string
+          send_after?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_completed_webhook_queue_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_deliverables: {
         Row: {
           actual_date: string | null
