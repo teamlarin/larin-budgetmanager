@@ -525,7 +525,7 @@ export const WeeklyFocusView = ({ userId, userName, todayActivities = [], capaci
       <MyTasksWidget userId={userId} excludeTaskIds={focusTaskIds} title="Altre task assegnate" />
 
       <div className="text-center pt-2">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/projects')}>
+        <Button variant="ghost" size="sm" onClick={() => navigate('/approved-projects')}>
           Non vedi un progetto? → Tutti i progetti
         </Button>
       </div>
