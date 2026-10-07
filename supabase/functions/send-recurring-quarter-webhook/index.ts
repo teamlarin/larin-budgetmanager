@@ -54,6 +54,22 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Invii solo lun-ven alle 12 ora italiana (il cron gira alle 10 e 11 UTC per coprire l'ora legale)
+    let force = false;
+    try { force = !!(await req.json())?.force; } catch { /* no body */ }
+    const romeParts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/Rome", weekday: "short", hour: "2-digit", hourCycle: "h23",
+    }).formatToParts(new Date());
+    const romeHour = Number(romeParts.find((p) => p.type === "hour")?.value);
+    const romeWeekday = romeParts.find((p) => p.type === "weekday")?.value;
+    const isWeekdayNoon = romeHour === 12 && romeWeekday !== "Sat" && romeWeekday !== "Sun";
+    if (!force && !isWeekdayNoon) {
+      return new Response(
+        JSON.stringify({ message: "Fuori finestra di invio (lun-ven 12:00 Europe/Rome)", romeHour, romeWeekday }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Webhook URL
     const { data: webhookSetting } = await supabase
       .from("app_settings")
@@ -67,6 +83,38 @@ Deno.serve(async (req) => {
         JSON.stringify({ message: "No webhook URL configured" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // 1) One-shot completati: coda con attesa minima di 48 ore
+    const oneShotResults: any[] = [];
+    const { data: queued } = await supabase
+      .from("project_completed_webhook_queue")
+      .select("project_id, attempts")
+      .eq("status", "pending")
+      .lte("send_after", new Date().toISOString());
+    for (const q of queued || []) {
+      let ok = false;
+      let errText: string | null = null;
+      try {
+        const resp = await fetch(`${supabaseUrl}/functions/v1/project-completed-webhook`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseServiceKey}` },
+          body: JSON.stringify({ project_id: q.project_id }),
+        });
+        ok = resp.ok;
+        if (!ok) errText = (await resp.text()).slice(0, 500);
+      } catch (e) {
+        errText = String(e).slice(0, 500);
+      }
+      const attempts = (q.attempts || 0) + 1;
+      await supabase.from("project_completed_webhook_queue").update({
+        status: ok ? "sent" : attempts >= 5 ? "error" : "pending",
+        attempts,
+        sent_at: ok ? new Date().toISOString() : null,
+        last_error: errText,
+        updated_at: new Date().toISOString(),
+      }).eq("project_id", q.project_id);
+      oneShotResults.push({ project_id: q.project_id, ok, error: errText });
     }
 
     // Recurring projects with a start_date and not completed
@@ -135,8 +183,8 @@ Deno.serve(async (req) => {
       if (endBound) endBound.setUTCHours(0, 0, 0, 0);
 
       for (let n = 1; n <= 200; n++) {
-        // trigger date = start_date + n*3 months + 15 days
-        const triggerDate = addMonthsAndDays(project.start_date, n * 3, 15);
+        // trigger date = start_date + n*3 months - 5 days (inviato al primo run feriale delle 12:00)
+        const triggerDate = addMonthsAndDays(project.start_date, n * 3, -5);
         if (triggerDate > today) break;
 
         // period start/end (without offset)
@@ -253,6 +301,8 @@ Deno.serve(async (req) => {
         projects_scanned: projects?.length || 0,
         triggers_sent: results.filter((r) => r.status >= 200 && r.status < 300).length,
         results,
+        one_shot_sent: oneShotResults.filter((r) => r.ok).length,
+        one_shot_results: oneShotResults,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

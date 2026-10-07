@@ -417,15 +417,8 @@ const ProjectCanvas = () => {
       // (attività e task aperte vengono completate automaticamente da un trigger DB)
       if (field === 'project_status' && (value === 'completato' || value === 'interrotto')) {
         const isInterrupted = value === 'interrotto';
-        if (!isInterrupted) {
-          try {
-            await supabase.functions.invoke('project-completed-webhook', {
-              body: { project_id: project.id },
-            });
-          } catch (webhookError) {
-            console.error('Error triggering project completed webhook:', webhookError);
-          }
-        }
+        // Il webhook customer satisfaction viene accodato da un trigger DB:
+        // parte dopo 48h, il primo giorno feriale alle 12:00.
 
 
         // Fetch residual margin for Slack notification
