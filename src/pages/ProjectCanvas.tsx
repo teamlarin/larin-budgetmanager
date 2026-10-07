@@ -416,6 +416,7 @@ const ProjectCanvas = () => {
       // If project_status changed to 'completato', trigger webhook & Slack
       // (attività e task aperte vengono completate automaticamente da un trigger DB)
       if (field === 'project_status' && (value === 'completato' || value === 'interrotto')) {
+        const isInterrupted = value === 'interrotto';
         // Il webhook customer satisfaction viene accodato da un trigger DB:
         // parte dopo 48h, il primo giorno feriale alle 12:00.
 
