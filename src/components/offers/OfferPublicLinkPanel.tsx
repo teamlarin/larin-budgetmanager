@@ -73,6 +73,7 @@ interface OfferPublicLinkPanelProps {
   offerReference: string;
   clientEmail: string | null;
   clientName?: string | null;
+  offerTitle?: string | null;
   versions: { id: string; version_number: number }[];
   canManage: boolean;
   hasSentVersion: boolean;
@@ -83,6 +84,7 @@ export const OfferPublicLinkPanel = ({
   offerReference,
   clientEmail,
   clientName,
+  offerTitle,
   versions,
   canManage,
   hasSentVersion,
@@ -94,7 +96,7 @@ export const OfferPublicLinkPanel = ({
   const [expiryDaysInput, setExpiryDaysInput] = useState('30');
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
   const [sendTo, setSendTo] = useState(clientEmail ?? '');
-  const defaultSendMessage = useMemo(() => buildDefaultSendMessage(clientName), [clientName]);
+  const defaultSendMessage = useMemo(() => buildDefaultSendMessage(clientName, offerReference, offerTitle), [clientName, offerReference, offerTitle]);
   const [sendMessage, setSendMessage] = useState(defaultSendMessage);
   const [messageEdited, setMessageEdited] = useState(false);
 
