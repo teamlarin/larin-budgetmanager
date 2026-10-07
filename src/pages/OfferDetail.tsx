@@ -899,6 +899,23 @@ const OfferDetail = () => {
               <span className="font-medium">€{offeredTotalValue.toFixed(2)}</span>
             )}
           </div>
+          {(() => {
+            const rates = [...new Set(editingLines.map((l) => Number(l.vat_rate)))];
+            if (rates.length !== 1) return null;
+            const iva = Math.round(offeredTotalValue * rates[0]) / 100;
+            return (
+              <>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">IVA {rates[0]}%</span>
+                  <span className="font-medium">€{iva.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Totale IVA inclusa</span>
+                  <span className="font-semibold">€{(offeredTotalValue + iva).toFixed(2)}</span>
+                </div>
+              </>
+            );
+          })()}
           <div className="border-t pt-2 mt-2 flex justify-between text-lg font-bold">
             <span>Sconto effettivo</span>
             <span>{effectiveDiscountPct.toFixed(1)}%</span>
