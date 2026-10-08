@@ -73,17 +73,25 @@ interface OfferPublicLinkPanelProps {
   offerReference: string;
   clientEmail: string | null;
   clientName?: string | null;
+  clientId?: string | null;
+  defaultContactId?: string | null;
   offerTitle?: string | null;
   versions: { id: string; version_number: number }[];
   canManage: boolean;
   hasSentVersion: boolean;
 }
 
+type ContactOption = { id: string; first_name: string | null; last_name: string | null; email: string | null; role: string | null; is_primary: boolean };
+const MANUAL = '__none__';
+const contactName = (c: ContactOption) => [c.first_name, c.last_name].filter(Boolean).join(' ').trim();
+
 export const OfferPublicLinkPanel = ({
   offerId,
   offerReference,
   clientEmail,
   clientName,
+  clientId,
+  defaultContactId,
   offerTitle,
   versions,
   canManage,
@@ -96,7 +104,48 @@ export const OfferPublicLinkPanel = ({
   const [expiryDaysInput, setExpiryDaysInput] = useState('30');
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
   const [sendTo, setSendTo] = useState(clientEmail ?? '');
-  const defaultSendMessage = useMemo(() => buildDefaultSendMessage(clientName, offerReference, offerTitle), [clientName, offerReference, offerTitle]);
+  const [contactId, setContactId] = useState<string>(MANUAL);
+  const [contactTouched, setContactTouched] = useState(false);
+
+  // Referenti dell'azienda (multi-azienda + legacy client_id)
+  const { data: contacts = [] } = useQuery({
+    queryKey: ['offer-client-contacts', clientId],
+    enabled: !!clientId,
+    queryFn: async (): Promise<ContactOption[]> => {
+      const { data: links } = await supabase
+        .from('client_contact_clients')
+        .select('contact_id, is_primary')
+        .eq('client_id', clientId as string);
+      const primary = new Set((links || []).filter((l: any) => l.is_primary).map((l: any) => l.contact_id));
+      const ids = (links || []).map((l: any) => l.contact_id);
+      const cols = 'id, first_name, last_name, email, role';
+      const [{ data: linked }, { data: legacy }] = await Promise.all([
+        ids.length ? supabase.from('client_contacts').select(cols).in('id', ids) : Promise.resolve({ data: [] as any[] }),
+        supabase.from('client_contacts').select(cols).eq('client_id', clientId as string),
+      ]);
+      const map = new Map<string, ContactOption>();
+      [...(linked || []), ...(legacy || [])].forEach((c: any) => map.set(c.id, { ...c, is_primary: primary.has(c.id) }));
+      return [...map.values()].sort((a, b) =>
+        Number(b.is_primary) - Number(a.is_primary) || contactName(a).localeCompare(contactName(b)));
+    },
+  });
+
+  // Preselezione: referente del budget, altrimenti primario/primo con email
+  useEffect(() => {
+    if (contactTouched || contacts.length === 0) return;
+    const pick = contacts.find((c) => c.id === defaultContactId)
+      ?? contacts.find((c) => c.is_primary && c.email)
+      ?? (!clientEmail ? contacts.find((c) => c.email) : undefined);
+    if (pick) {
+      setContactId(pick.id);
+      if (pick.email) setSendTo(pick.email);
+    }
+  }, [contacts, defaultContactId, clientEmail, contactTouched]);
+
+  const selectedContact = contacts.find((c) => c.id === contactId) ?? null;
+  const greetingName = selectedContact ? contactName(selectedContact) || clientName : clientName;
+
+  const defaultSendMessage = useMemo(() => buildDefaultSendMessage(greetingName, offerReference, offerTitle), [greetingName, offerReference, offerTitle]);
   const [sendMessage, setSendMessage] = useState(defaultSendMessage);
   const [messageEdited, setMessageEdited] = useState(false);
 
@@ -106,6 +155,14 @@ export const OfferPublicLinkPanel = ({
     if (messageEdited) return;
     setSendMessage(defaultSendMessage);
   }, [defaultSendMessage, messageEdited]);
+
+  const handleContactChange = (value: string) => {
+    setContactTouched(true);
+    setContactId(value);
+    const c = contacts.find((x) => x.id === value);
+    if (c?.email) setSendTo(c.email);
+    else if (value === MANUAL) setSendTo(clientEmail ?? '');
+  };
 
   const versionIds = useMemo(() => versions.map((v) => v.id), [versions]);
   const versionNumberById = useMemo(() => {
