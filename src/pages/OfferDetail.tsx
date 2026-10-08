@@ -51,7 +51,7 @@ type OfferDetailRow = {
   legacy_quote_number: string | null;
   clients: { id: string; name: string; email: string | null } | null;
   projects: { id: string; name: string } | null;
-  budgets: { id: string; name: string | null; project_id: string | null } | null;
+  budgets: { id: string; name: string | null; project_id: string | null; client_contact_id: string | null } | null;
 };
 
 const productNatureLabels: Record<string, string> = {
@@ -112,7 +112,7 @@ const OfferDetail = () => {
           id, year, number, title, client_id, project_id, current_version_id, origin, budget_id, legacy_quote_id, legacy_quote_number,
           clients ( id, name, email ),
           projects ( id, name ),
-          budgets:budget_id ( id, name, project_id )
+          budgets:budget_id ( id, name, project_id, client_contact_id )
         `)
         .eq('id', offerId)
         .single();
@@ -948,6 +948,8 @@ const OfferDetail = () => {
           offerReference={`${offer.year}/${offer.number}`}
           clientEmail={offer.clients?.email ?? null}
           clientName={offer.clients?.name ?? null}
+          clientId={offer.client_id ?? offer.clients?.id ?? null}
+          defaultContactId={offer.budgets?.client_contact_id ?? null}
           offerTitle={offer.title}
           versions={versions}
           canManage={canManage}
