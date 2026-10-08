@@ -29,6 +29,7 @@ import { OfferStatusSelector, offerStatusConfig } from '@/components/OfferStatus
 import { RecordManualDecisionDialog } from '@/components/offers/RecordManualDecisionDialog';
 import { OfferPaymentPlanSection } from '@/components/OfferPaymentPlanSection';
 import { OfferPublicLinkPanel } from '@/components/offers/OfferPublicLinkPanel';
+import { SignedOfferCard } from '@/components/offers/SignedOfferCard';
 import type { Database } from '@/integrations/supabase/types';
 import { createProjectFromOffer } from '@/lib/createProjectFromOffer';
 import { ActivateRecurringDialog } from '@/components/offers/ActivateRecurringDialog';
@@ -651,6 +652,10 @@ const OfferDetail = () => {
           </div>
         </CardHeader>
       </Card>
+
+      {selectedVersion?.status === 'accettata' && (
+        <SignedOfferCard offerVersionId={selectedVersion.id} />
+      )}
 
       {selectedVersion && !isBozza && (
         <Alert>
