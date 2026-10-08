@@ -75,7 +75,7 @@ export const WeeklyUpdatesWidget = ({ filterAreas }: WeeklyUpdatesWidgetProps = 
       const [projectsRes, profilesRes] = await Promise.all([
         supabase
           .from('projects')
-          .select('id, name, area, clients(name)')
+          .select('id, name, area, project_leader_id, clients(name)')
           .in('id', projectIds),
         supabase
           .from('profiles')
@@ -83,9 +83,9 @@ export const WeeklyUpdatesWidget = ({ filterAreas }: WeeklyUpdatesWidgetProps = 
           .in('id', userIds),
       ]);
 
-      const projectMap: Record<string, { name: string; area: string | null; clientName: string | null }> = {};
+      const projectMap: Record<string, { name: string; area: string | null; clientName: string | null; leaderId: string | null }> = {};
       (projectsRes.data || []).forEach((p: any) => {
-        projectMap[p.id] = { name: p.name, area: p.area, clientName: p.clients?.name || null };
+        projectMap[p.id] = { name: p.name, area: p.area, clientName: p.clients?.name || null, leaderId: p.project_leader_id || null };
       });
 
       const profileMap: Record<string, string> = {};
@@ -99,6 +99,7 @@ export const WeeklyUpdatesWidget = ({ filterAreas }: WeeklyUpdatesWidgetProps = 
         _projectArea: projectMap[u.project_id]?.area || null,
         _clientName: projectMap[u.project_id]?.clientName || null,
         _userName: profileMap[u.user_id] || 'Utente',
+        _leaderId: projectMap[u.project_id]?.leaderId || null,
       })) as WeeklyUpdate[];
     },
   });
@@ -116,7 +117,7 @@ export const WeeklyUpdatesWidget = ({ filterAreas }: WeeklyUpdatesWidgetProps = 
       const ids = [...new Set(rbs.map(r => r.project_id))];
       const { data: projs } = await supabase
         .from('projects')
-        .select('id, name, area, project_status, clients(name)')
+        .select('id, name, area, project_status, project_leader_id, clients(name)')
         .in('id', ids);
       const map: Record<string, any> = {};
       (projs || []).forEach((p: any) => { map[p.id] = p; });
@@ -127,6 +128,7 @@ export const WeeklyUpdatesWidget = ({ filterAreas }: WeeklyUpdatesWidgetProps = 
           _projectName: map[r.project_id].name,
           _projectArea: map[r.project_id].area,
           _clientName: map[r.project_id].clients?.name || null,
+          _leaderId: map[r.project_id].project_leader_id || null,
         })) as ActiveRoadblock[];
     },
   });
@@ -138,7 +140,7 @@ export const WeeklyUpdatesWidget = ({ filterAreas }: WeeklyUpdatesWidgetProps = 
       // Get all open projects
       const { data: openProjects, error } = await supabase
         .from('projects')
-        .select('id, name, area, billing_type, clients(name)')
+        .select('id, name, area, billing_type, project_leader_id, clients(name)')
         .eq('status', 'approvato')
         .eq('project_status', 'aperto');
       if (error) throw error;
