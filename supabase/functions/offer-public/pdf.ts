@@ -39,6 +39,8 @@ export interface OfferSnapshotLine {
   discount_percentage: number;
   vat_rate: number;
   line_total: number;
+  /** Aggiunta a runtime (non nello snapshot congelato): una_tantum | ricorrente | a_giornate. */
+  product_nature?: string | null;
 }
 
 export interface OfferSnapshotPaymentPlanItem {
@@ -417,8 +419,22 @@ function paymentTermPhrase(item: OfferSnapshotPaymentPlanItem): string {
   return label.charAt(0).toLowerCase() + label.slice(1);
 }
 
-function paymentPlanSentence(item: OfferSnapshotPaymentPlanItem): string {
-  const quota = item.percentage != null ? formatPercentage(item.percentage) : formatCurrency(item.amount ?? 0);
+export function offerQuoteSplit(snapshot: OfferSnapshot): { mixed: boolean; oneShot: number; recurring: number } {
+  let oneShot = 0;
+  let recurring = 0;
+  for (const l of snapshot.lines ?? []) {
+    if (l.product_nature === 'ricorrente') recurring += Number(l.line_total) || 0;
+    else oneShot += Number(l.line_total) || 0;
+  }
+  return { mixed: recurring > 0 && oneShot > 0, oneShot, recurring };
+}
+
+function paymentPlanSentence(item: OfferSnapshotPaymentPlanItem, base?: number): string {
+  const quota = item.percentage != null
+    ? (base != null && base > 0
+        ? `${formatPercentage(item.percentage)} (${formatCurrency(Math.round(base * Number(item.percentage)) / 100)})`
+        : formatPercentage(item.percentage))
+    : formatCurrency(item.amount ?? 0);
   const sentence = `${quota} ${maturityEventPhrase(item)}, ${paymentTermPhrase(item)}`;
   return sentence.charAt(0).toUpperCase() + sentence.slice(1);
 }
@@ -871,13 +887,19 @@ function drawLinesSection(layout: Layout, snapshot: OfferSnapshot): void {
 // Piano di pagamento: il "connect the dots" del marchio, non un elenco puntato
 // -----------------------------------------------------------------------------
 
-function drawPaymentPlanSection(layout: Layout, items: OfferSnapshotPaymentPlanItem[]): void {
+function drawPaymentPlanSection(layout: Layout, snapshot: OfferSnapshot): void {
+  const items = snapshot.payment_plan ?? [];
   if (items.length === 0) return;
+  const split = offerQuoteSplit(snapshot);
+  const base = split.mixed ? split.oneShot : Number(snapshot.version.offered_total);
 
   layout.divider();
   layout.spacer(24);
   layout.kicker('Piano di pagamento');
   layout.spacer(16);
+  if (split.mixed) {
+    layout.kicker(`Quota progetto: ${formatCurrency(split.oneShot)}`, { size: 8.5, tracking: 8.5 * 0.14, gap: 10 });
+  }
 
   const dotX = MARGIN + 8;
   const textX = MARGIN + 24;
@@ -887,7 +909,7 @@ function drawPaymentPlanSection(layout: Layout, items: OfferSnapshotPaymentPlanI
   let prevDotY: number | null = null;
 
   items.forEach((item, idx) => {
-    const sentence = paymentPlanSentence(item);
+    const sentence = paymentPlanSentence(item, base);
     const lines = wrapText(sentence, layout.fontRegular, 10, textWidth);
     const lineH = 14;
     const textBlockHeight = Math.max(lines.length, 1) * lineH;
@@ -927,6 +949,16 @@ function drawPaymentPlanSection(layout: Layout, items: OfferSnapshotPaymentPlanI
     prevDotY = dotY;
     layout.y -= rowHeight;
   });
+
+  if (split.mixed) {
+    layout.spacer(10);
+    layout.kicker(`Quota canone ricorrente: ${formatCurrency(split.recurring)}`, { size: 8.5, tracking: 8.5 * 0.14, gap: 6 });
+    const names = (snapshot.lines ?? []).filter((l) => l.product_nature === 'ricorrente').map((l) => l.product_name || l.description).join(', ');
+    layout.preservedParagraph(
+      `${names}: fatturazione separata come canone ricorrente, esclusa dalle percentuali del piano sopra.`,
+      { size: 9.5, color: COLOR_INK, gap: 6 },
+    );
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -994,7 +1026,7 @@ function drawConditionsSection(layout: Layout, snapshot: OfferSnapshot): void {
 function renderOfferContent(layout: Layout, snapshot: OfferSnapshot, options: GenerateOfferPdfOptions) {
   drawOfferHeader(layout, snapshot, options);
   drawLinesSection(layout, snapshot);
-  drawPaymentPlanSection(layout, snapshot.payment_plan ?? []);
+  drawPaymentPlanSection(layout, snapshot);
   drawPaymentNotesSection(layout, snapshot.version.payment_terms_text);
   drawPaymentDetailsSection(layout, snapshot.terms.payment_details);
   drawConditionsSection(layout, snapshot);
