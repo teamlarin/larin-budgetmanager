@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { format, subDays, differenceInDays } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { AlertTriangle, MessageSquare, TrendingUp, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AREA_LABELS, AREA_COLORS } from '@/lib/areaColors';
 import { getHealthMeta, ROADBLOCK_TYPE_LABELS, type RoadblockType } from '@/lib/projectRoadblocks';
@@ -23,6 +24,7 @@ interface ActiveRoadblock {
   _projectName: string;
   _projectArea: string | null;
   _clientName: string | null;
+  _leaderId?: string | null;
 }
 
 type LevelArea = keyof typeof AREA_LABELS;
@@ -40,6 +42,7 @@ interface WeeklyUpdate {
   _projectArea: string | null;
   _clientName: string | null;
   _userName: string;
+  _leaderId?: string | null;
 }
 
 const COLLAPSED_LIMIT = 5;
@@ -51,6 +54,7 @@ interface WeeklyUpdatesWidgetProps {
 export const WeeklyUpdatesWidget = ({ filterAreas }: WeeklyUpdatesWidgetProps = {}) => {
   const navigate = useNavigate();
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
+  const [selectedLeader, setSelectedLeader] = useState<string | null>(null);
   const [showAllUpdates, setShowAllUpdates] = useState(false);
   const [showAllStale, setShowAllStale] = useState(false);
 
@@ -322,14 +326,23 @@ export const WeeklyUpdatesWidget = ({ filterAreas }: WeeklyUpdatesWidgetProps = 
             <Clock className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent variant="stats">
-            <div className="text-2xl font-bold text-amber-600">{staleProjects.length}</div>
+            <div className="text-2xl font-bold text-amber-600">{filteredStaleProjects.length}</div>
             <p className="text-xs text-muted-foreground">da oltre 7 giorni</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Area filter */}
-      <div className="flex flex-wrap gap-2">
+      {/* Area + leader filter */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Select value={selectedLeader ?? '__none__'} onValueChange={(v) => setSelectedLeader(v === '__none__' ? null : v)}>
+          <SelectTrigger className="h-8 w-[220px]"><SelectValue placeholder="Project leader" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">Tutti i project leader</SelectItem>
+            {leaderOptions.map(id => (
+              <SelectItem key={id} value={id}>{leaderNames[id].name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Badge
           variant={selectedArea === null ? 'default' : 'outline'}
           className="cursor-pointer"
