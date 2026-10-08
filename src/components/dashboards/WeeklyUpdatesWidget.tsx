@@ -176,23 +176,62 @@ export const WeeklyUpdatesWidget = ({ filterAreas }: WeeklyUpdatesWidgetProps = 
           name: p.name,
           area: p.area as string | null,
           clientName: (p.clients?.name as string) || null,
+          leaderId: (p.project_leader_id as string) || null,
           lastUpdate: latestByProject[p.id] || null,
           daysSince: latestByProject[p.id] ? differenceInDays(now, new Date(latestByProject[p.id])) : null,
         }));
     },
   });
 
-  // Pre-filter by filterAreas if provided
-  const preFilteredUpdates = useMemo(() => {
-    if (!filterAreas?.length) return updates;
-    return updates.filter(u => u._projectArea && filterAreas.includes(u._projectArea));
-  }, [updates, filterAreas]);
+  // Nomi dei project leader presenti nei dati
+  const leaderIds = useMemo(() => {
+    const s = new Set<string>();
+    updates.forEach(u => u._leaderId && s.add(u._leaderId));
+    roadblocks.forEach(r => r._leaderId && s.add(r._leaderId));
+    staleProjects.forEach(p => p.leaderId && s.add(p.leaderId));
+    return [...s].sort();
+  }, [updates, roadblocks, staleProjects]);
 
-  // Split into roadblock updates and normal updates
+  const { data: leaderNames = {} } = useQuery({
+    queryKey: ['weekly-updates-leaders', leaderIds],
+    enabled: leaderIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, full_name, first_name, last_name')
+        .in('id', leaderIds);
+      const map: Record<string, { name: string; last: string }> = {};
+      (data || []).forEach((p: any) => {
+        map[p.id] = {
+          name: p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Utente',
+          last: p.last_name || p.full_name || '',
+        };
+      });
+      return map;
+    },
+  });
+
+  const leaderOptions = useMemo(
+    () => leaderIds
+      .filter(id => leaderNames[id])
+      .sort((a, b) => leaderNames[a].last.localeCompare(leaderNames[b].last)),
+    [leaderIds, leaderNames],
+  );
+
+  const matchLeader = (id: string | null | undefined) => !selectedLeader || id === selectedLeader;
+
+  // Pre-filter by filterAreas and leader
+  const preFilteredUpdates = useMemo(() => {
+    let list = updates.filter(u => matchLeader(u._leaderId));
+    if (filterAreas?.length) list = list.filter(u => u._projectArea && filterAreas.includes(u._projectArea));
+    return list;
+  }, [updates, filterAreas, selectedLeader]);
+
   const preFilteredRoadblocks = useMemo(() => {
-    if (!filterAreas?.length) return roadblocks;
-    return roadblocks.filter(r => r._projectArea && filterAreas.includes(r._projectArea));
-  }, [roadblocks, filterAreas]);
+    let list = roadblocks.filter(r => matchLeader(r._leaderId));
+    if (filterAreas?.length) list = list.filter(r => r._projectArea && filterAreas.includes(r._projectArea));
+    return list;
+  }, [roadblocks, filterAreas, selectedLeader]);
 
   const activeRoadblocks = useMemo(() => {
     if (!selectedArea) return preFilteredRoadblocks;
@@ -202,15 +241,15 @@ export const WeeklyUpdatesWidget = ({ filterAreas }: WeeklyUpdatesWidgetProps = 
   const normalUpdates = useMemo(() => {
     let filtered = preFilteredUpdates;
     if (selectedArea) filtered = filtered.filter(u => u._projectArea === selectedArea);
-    return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return [...filtered].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [preFilteredUpdates, selectedArea]);
 
   const filteredStaleProjects = useMemo(() => {
-    let filtered = staleProjects;
+    let filtered = staleProjects.filter(p => matchLeader(p.leaderId));
     if (filterAreas?.length) filtered = filtered.filter(p => p.area && filterAreas.includes(p.area));
     if (selectedArea) filtered = filtered.filter(p => p.area === selectedArea);
     return filtered;
-  }, [staleProjects, selectedArea, filterAreas]);
+  }, [staleProjects, selectedArea, filterAreas, selectedLeader]);
 
   const roadblockCount = preFilteredRoadblocks.length;
   const areas = (Object.keys(AREA_LABELS) as LevelArea[]).filter(a => {
