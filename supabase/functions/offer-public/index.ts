@@ -5,6 +5,7 @@
 // Contratto HTTP e forma dello snapshot: vedi il contratto del blocco B5.
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { generateOfferPdf, generateSignedOfferPdf, OfferSnapshot } from './pdf.ts';
+import { copySignedPdfToClientDrive } from './drive.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -486,6 +487,13 @@ async function handlePost(supabase: SupabaseClient, req: Request, clientIp: stri
 
   try {
     const pdfUrl = await ensurePdfUrlForVersion(supabase, offerVersionId, action === 'accept');
+    if (action === 'accept') {
+      try {
+        await copySignedPdfToClientDrive(supabase, offerVersionId, DOCUMENTS_BUCKET);
+      } catch (e) {
+        console.error('drive copy failed', e);
+      }
+    }
     return json(200, { ok: true, signature_id: decisionResult.signature_id, pdf_url: pdfUrl });
   } catch (error) {
     // La decisione È stata registrata correttamente: un intoppo nella sola
