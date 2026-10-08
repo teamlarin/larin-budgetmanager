@@ -94,6 +94,35 @@ async function createSignedPdfUrl(supabase: SupabaseClient, path: string): Promi
   return data.signedUrl;
 }
 
+/**
+ * La natura del prodotto (una tantum / ricorrente) non è nel documento
+ * congelato delle offerte già inviate: la si legge al volo dalle righe, senza
+ * toccare lo snapshot firmato, solo per presentare il piano di pagamento
+ * diviso per quota. Righe allineate allo stesso ordine dello snapshot.
+ */
+async function enrichSnapshotNatures(supabase: SupabaseClient, offerVersionId: string, snapshot: OfferSnapshot): Promise<OfferSnapshot> {
+  try {
+    if (!snapshot?.lines?.length || snapshot.lines.every((l) => l.product_nature !== undefined)) return snapshot;
+    const { data } = await supabase
+      .from('offer_lines')
+      .select('description, display_order, products(product_nature)')
+      .eq('offer_version_id', offerVersionId)
+      .order('display_order')
+      .order('description');
+    if (!data || data.length !== snapshot.lines.length) return snapshot;
+    return {
+      ...snapshot,
+      lines: snapshot.lines.map((l, i) => ({
+        ...l,
+        product_nature: l.product_nature ?? ((data[i] as any)?.products?.product_nature ?? null),
+      })),
+    };
+  } catch (e) {
+    console.error('enrichSnapshotNatures', e);
+    return snapshot;
+  }
+}
+
 /** Genera (se manca) e restituisce l'URL firmato del PDF non firmato di una versione. */
 async function ensureBasePdfUrl(supabase: SupabaseClient, offerVersionId: string): Promise<string> {
   const { data: docRow, error: docError } = await supabase
@@ -109,7 +138,7 @@ async function ensureBasePdfUrl(supabase: SupabaseClient, offerVersionId: string
   let pdfPath = docRow.pdf_path as string | null;
 
   if (!pdfPath) {
-    const snapshot = docRow.snapshot as OfferSnapshot;
+    const snapshot = await enrichSnapshotNatures(supabase, offerVersionId, docRow.snapshot as OfferSnapshot);
     const pdfBytes = await generateOfferPdf(snapshot, {
       documentHash: docRow.snapshot_hash,
       frozenAt: docRow.frozen_at,
@@ -189,7 +218,7 @@ async function ensureSignedPdfUrl(supabase: SupabaseClient, offerVersionId: stri
   }
   const signaturePngBytes = new Uint8Array(await pngBlob.arrayBuffer());
 
-  const snapshot = docRow.snapshot as OfferSnapshot;
+  const snapshot = await enrichSnapshotNatures(supabase, offerVersionId, docRow.snapshot as OfferSnapshot);
   const signedBytes = await generateSignedOfferPdf(
     snapshot,
     { documentHash: docRow.snapshot_hash, frozenAt: docRow.frozen_at },
@@ -300,6 +329,9 @@ async function handleGet(supabase: SupabaseClient, req: Request, clientIp: strin
   }
 
   if (!wantsPdf) {
+    if (resolved?.outcome === 'ok' && resolved.document && resolved.offer_version_id) {
+      resolved.document = await enrichSnapshotNatures(supabase, resolved.offer_version_id, resolved.document);
+    }
     return json(200, resolved);
   }
 
