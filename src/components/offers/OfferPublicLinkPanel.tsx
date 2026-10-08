@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -422,12 +423,31 @@ export const OfferPublicLinkPanel = ({
           <CardDescription>Manda al cliente il link per aprire, valutare e firmare l'offerta.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {!clientEmail && (
+          {!clientEmail && !sendTo.trim() && (
             <Alert>
               <AlertDescription>
-                Il cliente non ha un indirizzo email in anagrafica: inseriscine uno qui sotto per inviare l'offerta.
+                Il cliente non ha un indirizzo email in anagrafica: scegli un referente o inserisci un indirizzo qui sotto.
               </AlertDescription>
             </Alert>
+          )}
+          {contacts.length > 0 && (
+            <div className="space-y-2">
+              <Label>Referente destinatario</Label>
+              <Select value={contactId} onValueChange={handleContactChange} disabled={!canManage}>
+                <SelectTrigger><SelectValue placeholder="Seleziona un referente" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={MANUAL}>Inserimento manuale</SelectItem>
+                  {contacts.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {contactName(c) || 'Senza nome'}
+                      {c.role ? ` · ${c.role}` : ''}
+                      {c.email ? ` (${c.email})` : ' (senza email)'}
+                      {c.id === defaultContactId ? ' · dal budget' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )}
           <div className="space-y-2">
             <Label htmlFor="offer-send-to">Indirizzo email</Label>
