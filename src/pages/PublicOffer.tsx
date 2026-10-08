@@ -38,6 +38,7 @@ interface OfferLineSnapshot {
   discount_percentage: number;
   vat_rate: number;
   line_total: number;
+  product_nature?: string | null;
 }
 
 type MaturityEvent = 'firma' | 'consegna' | 'pubblicazione_fase' | 'data_calendario' | 'ricorrente';
@@ -177,8 +178,12 @@ function maturityEventText(entry: PaymentPlanEntrySnapshot): string {
 // Traduce una tranche in una frase leggibile ("50% alla firma, pagamento a 30
 // giorni data documento") invece che nei campi grezzi del record: è così che
 // deve leggersi un piano di pagamento per chi non lavora nel gestionale.
-function describeTranche(entry: PaymentPlanEntrySnapshot): string {
-  const value = entry.amount != null ? formatCurrency(Number(entry.amount)) : formatPercent(Number(entry.percentage));
+function describeTranche(entry: PaymentPlanEntrySnapshot, base?: number): string {
+  const value = entry.amount != null
+    ? formatCurrency(Number(entry.amount))
+    : base != null && base > 0
+      ? `${formatPercent(Number(entry.percentage))} (${formatCurrency(Math.round(base * Number(entry.percentage)) / 100)})`
+      : formatPercent(Number(entry.percentage));
   const eventText = maturityEventText(entry);
 
   let termText = '';
@@ -728,8 +733,19 @@ const PublicOffer = () => {
             )}
           </Sezione>
 
-          {paymentPlan.length > 0 && (
+          {paymentPlan.length > 0 && (() => {
+            const recurringLines = lines.filter((l) => l.product_nature === 'ricorrente');
+            const recurringTotal = recurringLines.reduce((s, l) => s + Number(l.line_total || 0), 0);
+            const oneShotTotal = lines.reduce((s, l) => s + (l.product_nature === 'ricorrente' ? 0 : Number(l.line_total || 0)), 0);
+            const mixed = recurringTotal > 0 && oneShotTotal > 0;
+            const base = mixed ? oneShotTotal : Number(doc.version.offered_total);
+            return (
             <Sezione titolo="Piano di pagamento">
+              {mixed && (
+                <p className="mb-4 text-[11px] font-medium uppercase tracking-[0.14em] text-[#8A9092]">
+                  Quota progetto: {formatCurrency(oneShotTotal)}
+                </p>
+              )}
               {/* Il marchio di Larin sono tre punti connessi: le tranche sono
                   letteralmente punti su una linea, quindi il piano di pagamento
                   si legge come una sequenza e non come un elenco. Il primo
@@ -744,12 +760,23 @@ const PublicOffer = () => {
                         idx === 0 ? 'border-[#4E5758] bg-[#4E5758]' : 'border-[#B9BDBE] bg-white'
                       }`}
                     />
-                    {describeTranche(entry)}
+                    {describeTranche(entry, base)}
                   </li>
                 ))}
               </ol>
+              {mixed && (
+                <div className="mt-8">
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-[#8A9092]">
+                    Quota canone ricorrente: {formatCurrency(recurringTotal)}
+                  </p>
+                  <p className="leading-relaxed">
+                    {recurringLines.map((l) => l.product_name || l.description).join(', ')}: fatturazione separata come canone ricorrente, esclusa dalle percentuali del piano sopra.
+                  </p>
+                </div>
+              )}
             </Sezione>
-          )}
+            );
+          })()}
 
           {doc.version.payment_terms_text && (
             <Sezione titolo="Note di pagamento">
