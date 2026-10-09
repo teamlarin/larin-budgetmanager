@@ -87,6 +87,63 @@ const emptyProfile = {
   company_support: '',
 };
 
+const fmtEur = (n: number) => `${n.toLocaleString('it-IT', { maximumFractionDigits: 2 })}€`;
+const CONTRACT_LABELS: Record<string, string> = {
+  'full-time': 'Dipendente full-time', 'part-time': 'Dipendente part-time',
+  freelance: 'Partita IVA', consuntivo: 'A consuntivo',
+};
+
+/** Dati sempre allineati: leader attuale dell'area e contratto attivo oggi. */
+async function loadLiveProfileData(userId: string, previousCompensation?: string | null) {
+  const out: { team_leader_name?: string; contract_type?: string; compensation?: string } = {};
+  try {
+    const { data: profile } = await supabase.from('profiles').select('area').eq('id', userId).maybeSingle();
+    if (profile?.area) {
+      const { data: tla } = await supabase.from('team_leader_areas').select('user_id').eq('area', profile.area);
+      const ids = (tla || []).map((r: any) => r.user_id).filter((id: string) => id !== userId);
+      if (ids.length) {
+        const { data: leaders } = await supabase.from('profiles')
+          .select('first_name, last_name, deleted_at, approved').in('id', ids);
+        const names = (leaders || [])
+          .filter((l: any) => !l.deleted_at && l.approved !== false && l.first_name !== 'Demo')
+          .map((l: any) => `${l.first_name || ''} ${l.last_name || ''}`.trim())
+          .filter(Boolean);
+        if (names.length) out.team_leader_name = names.join(', ');
+      }
+    }
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const { data: periods } = await supabase.from('user_contract_periods')
+      .select('start_date, end_date, contract_type, contract_hours, contract_hours_period, hourly_rate')
+      .eq('user_id', userId).lte('start_date', today).order('start_date', { ascending: false });
+    const active = (periods || []).find((p: any) => !p.end_date || p.end_date >= today);
+    if (active) {
+      out.contract_type = CONTRACT_LABELS[active.contract_type] || active.contract_type;
+      const rate = Number(active.hourly_rate || 0);
+      const hours = Number(active.contract_hours || 0);
+      let main = '';
+      if (active.contract_type === 'freelance' || active.contract_type === 'consuntivo') {
+        if (active.contract_hours_period === 'monthly' && hours && rate) main = `${fmtEur(hours * rate)}/mese (${fmtEur(rate)}/h per ${hours}h)`;
+        else if (rate) main = `${fmtEur(rate)}/h${hours ? ` per ${hours}h/${active.contract_hours_period === 'weekly' ? 'sett' : active.contract_hours_period === 'daily' ? 'g' : 'mese'}` : ''}`;
+      } else {
+        const { data: hr } = await supabase.from('hr_employees').select('ral, data_inizio, data_fine')
+          .eq('profile_id', userId).lte('data_inizio', today).gte('data_fine', today)
+          .order('data_inizio', { ascending: false }).limit(1);
+        const ral = Number((hr as any)?.[0]?.ral || 0);
+        if (ral) main = `RAL ${fmtEur(ral)}`;
+      }
+      if (main) {
+        // Conserva le note accessorie (budget formazione, buoni pasto, ...)
+        const extras = (previousCompensation || '').split(/\s+-\s+|\n/).map(x => x.trim())
+          .filter(x => x && !/€\s*\/\s*(mese|h)|RAL|^€?\s*[\d.,]+\s*€?$|Compenso|Contratto:/i.test(x));
+        out.compensation = [main, ...extras].join(' - ');
+      }
+    }
+  } catch (err) {
+    console.error('loadLiveProfileData', err);
+  }
+  return out;
+}
+
 export const PerformanceReviewManagement = () => {
   const { toast } = useToast();
   const profiles = useApprovedProfiles();
@@ -224,7 +281,13 @@ export const PerformanceReviewManagement = () => {
       .select('*')
       .eq('user_id', selectedUserId)
       .maybeSingle();
-    setPerfProfile(data as unknown as PerformanceProfile | null);
+    const prof = data as unknown as PerformanceProfile | null;
+    if (prof) {
+      const live = await loadLiveProfileData(selectedUserId, prof.compensation);
+      setPerfProfile({ ...prof, ...live });
+    } else {
+      setPerfProfile(null);
+    }
   };
 
   const loadDetails = async (reviewId: string) => {
@@ -350,6 +413,9 @@ export const PerformanceReviewManagement = () => {
       }
       setProfileForm(base);
     }
+
+    const live = await loadLiveProfileData(selectedUserId, perfProfile?.compensation);
+    setProfileForm(prev => ({ ...prev, ...live }));
 
     // Load contract periods
     try {
