@@ -87,6 +87,8 @@ const emptyProfile = {
   company_support: '',
 };
 
+const AREA_LABELS: Record<string, string> = { marketing: 'Marketing', tech: 'Tech', branding: 'Branding', sales: 'Sales', struttura: 'Struttura', ai: 'Jarvis', interno: 'Interno' };
+const areaLabel = (a: string) => AREA_LABELS[a.toLowerCase()] || a;
 const fmtEur = (n: number) => `${n.toLocaleString('it-IT', { maximumFractionDigits: 2 })}€`;
 const CONTRACT_LABELS: Record<string, string> = {
   'full-time': 'Dipendente full-time', 'part-time': 'Dipendente part-time',
@@ -306,7 +308,7 @@ export const PerformanceReviewManagement = () => {
       if (!m) return;
       m.hasProfile = true;
       m.jobTitle = p.job_title;
-      m.team = p.team;
+      m.team = p.team ? String(p.team).toLowerCase() : null;
     });
     setPreviews(map);
   };
@@ -630,7 +632,7 @@ export const PerformanceReviewManagement = () => {
                           <SelectContent>
                             <SelectItem value="all">Tutti i team</SelectItem>
                             {teams.map(t => (
-                              <SelectItem key={t} value={t}>{t}</SelectItem>
+                              <SelectItem key={t} value={t}>{areaLabel(t)}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -661,7 +663,7 @@ export const PerformanceReviewManagement = () => {
                                 >
                                   <TableCell className="font-medium">{p.first_name} {p.last_name}</TableCell>
                                   <TableCell className="text-sm text-muted-foreground">{pv?.jobTitle || '-'}</TableCell>
-                                  <TableCell className="text-sm text-muted-foreground">{pv?.team || '-'}</TableCell>
+                                  <TableCell className="text-sm text-muted-foreground">{pv?.team ? areaLabel(pv.team) : '-'}</TableCell>
                                   <TableCell className="text-center">
                                     <Badge variant={pv?.reviewCount ? 'secondary' : 'outline'}>{pv?.reviewCount ?? 0}</Badge>
                                   </TableCell>
@@ -722,7 +724,7 @@ export const PerformanceReviewManagement = () => {
                     </div>
                     <div>
                       <span className="text-muted-foreground">Team:</span>
-                      <p className="font-medium">{perfProfile.team || '-'}</p>
+                      <p className="font-medium">{perfProfile.team ? areaLabel(perfProfile.team) : '-'}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Team Leader:</span>
@@ -1002,7 +1004,7 @@ export const PerformanceReviewManagement = () => {
               </div>
               <div className="space-y-2">
                 <Label>Team</Label>
-                <Input value={profileForm.team} disabled className="bg-muted" />
+                <Input value={profileForm.team ? areaLabel(profileForm.team) : ''} disabled className="bg-muted" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
