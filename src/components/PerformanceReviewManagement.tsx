@@ -206,9 +206,39 @@ export const PerformanceReviewManagement = () => {
     if (profiles.length > 0) {
       loadPreviews();
       loadAllowedUsers();
+      loadExcludedUsers();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profiles.length]);
+
+  // Esclude utenti esterni e persone con contratto attivo "a consuntivo"
+  const [excludedUserIds, setExcludedUserIds] = useState<Set<string>>(new Set());
+  const loadExcludedUsers = async () => {
+    try {
+      const ids = profiles.map(p => p.id);
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const [rolesRes, periodsRes, compRes] = await Promise.all([
+        supabase.from('user_roles').select('user_id').eq('role', 'external'),
+        supabase.from('user_contract_periods').select('user_id, start_date, end_date, contract_type').in('user_id', ids),
+        supabase.rpc('get_profiles_compensation', { _user_ids: ids } as any),
+      ]);
+      const excluded = new Set<string>((rolesRes.data || []).map((r: any) => r.user_id));
+      const activeType = new Map<string, { start: string; type: string }>();
+      (periodsRes.data || []).forEach((p: any) => {
+        if (p.start_date > today || (p.end_date && p.end_date < today)) return;
+        const cur = activeType.get(p.user_id);
+        if (!cur || p.start_date > cur.start) activeType.set(p.user_id, { start: p.start_date, type: p.contract_type });
+      });
+      const profileType = new Map<string, string | null>(((compRes.data as any[]) || []).map(r => [r.id, r.contract_type]));
+      ids.forEach(id => {
+        const t = activeType.get(id)?.type ?? profileType.get(id);
+        if (t === 'consuntivo') excluded.add(id);
+      });
+      setExcludedUserIds(excluded);
+    } catch (err) {
+      console.error('loadExcludedUsers', err);
+    }
+  };
 
   const loadAllowedUsers = async () => {
     try {
@@ -578,6 +608,7 @@ export const PerformanceReviewManagement = () => {
                   const q = searchQuery.trim().toLowerCase();
                   const filtered = profiles.filter(p => {
                     if (allowedUserIds !== null && !allowedUserIds.has(p.id)) return false;
+                    if (excludedUserIds.has(p.id)) return false;
                     const fullName = `${p.first_name || ''} ${p.last_name || ''}`.toLowerCase();
                     if (q && !fullName.includes(q)) return false;
                     if (teamFilter !== 'all' && previews[p.id]?.team !== teamFilter) return false;
