@@ -95,9 +95,25 @@ const CONTRACT_LABELS: Record<string, string> = {
 
 /** Dati sempre allineati: leader attuale dell'area e contratto attivo oggi. */
 async function loadLiveProfileData(userId: string, previousCompensation?: string | null) {
-  const out: { team_leader_name?: string; contract_type?: string; compensation?: string } = {};
+  const out: { team_leader_name?: string; contract_type?: string; compensation?: string; job_title?: string; team?: string; start_date?: string; contract_history?: string } = {};
   try {
-    const { data: profile } = await supabase.from('profiles').select('area').eq('id', userId).maybeSingle();
+    const { data: profile } = await supabase.from('profiles').select('area, title').eq('id', userId).maybeSingle();
+    if ((profile as any)?.title) out.job_title = (profile as any).title;
+    if (profile?.area) out.team = profile.area;
+    try {
+      const { data: allPeriods } = await supabase.from('user_contract_periods')
+        .select('start_date, end_date, contract_type, contract_hours, contract_hours_period, hourly_rate')
+        .eq('user_id', userId).order('start_date', { ascending: true });
+      if (allPeriods?.length) {
+        out.start_date = (allPeriods[0] as any).start_date;
+        out.contract_history = allPeriods.map((p: any) => {
+          const lbl = CONTRACT_LABELS[p.contract_type] || p.contract_type;
+          const h = p.contract_hours ? ` ${p.contract_hours}h/${p.contract_hours_period === 'weekly' ? 'sett' : p.contract_hours_period === 'daily' ? 'g' : 'mese'}` : '';
+          const r = p.hourly_rate ? ` ${fmtEur(Number(p.hourly_rate))}/h` : '';
+          return `${p.start_date} → ${p.end_date || 'in corso'}: ${lbl}${h}${r}`;
+        }).join('\n');
+      }
+    } catch { /* ignore */ }
     if (profile?.area) {
       const { data: tla } = await supabase.from('team_leader_areas').select('user_id').eq('area', profile.area);
       const ids = (tla || []).map((r: any) => r.user_id).filter((id: string) => id !== userId);
@@ -283,10 +299,22 @@ export const PerformanceReviewManagement = () => {
       .maybeSingle();
     const prof = data as unknown as PerformanceProfile | null;
     if (prof) {
-      const live = await loadLiveProfileData(selectedUserId, prof.compensation);
-      setPerfProfile({ ...prof, ...live });
+      const { job_title, team, start_date, contract_history, ...live } = await loadLiveProfileData(selectedUserId, prof.compensation);
+      setPerfProfile({
+        ...prof, ...live,
+        job_title: prof.job_title || job_title || null,
+        team: prof.team || team || null,
+        start_date: prof.start_date || start_date || null,
+        contract_history: prof.contract_history || contract_history || null,
+      });
     } else {
-      setPerfProfile(null);
+      // Scheda non ancora compilata: precompila con i dati disponibili in TimeTrap
+      const live = await loadLiveProfileData(selectedUserId, null);
+      setPerfProfile({
+        ...(emptyProfile as any), id: '', user_id: selectedUserId,
+        ...Object.fromEntries(Object.entries(emptyProfile).map(([k]) => [k, null])),
+        ...live,
+      } as PerformanceProfile);
     }
   };
 
@@ -415,7 +443,13 @@ export const PerformanceReviewManagement = () => {
     }
 
     const live = await loadLiveProfileData(selectedUserId, perfProfile?.compensation);
-    setProfileForm(prev => ({ ...prev, ...live }));
+    setProfileForm(prev => {
+      const next: any = { ...prev };
+      Object.entries(live).forEach(([k, v]) => {
+        if (['team_leader_name', 'contract_type', 'compensation'].includes(k) || !next[k]) next[k] = v;
+      });
+      return next;
+    });
 
     // Load contract periods
     try {
@@ -449,7 +483,7 @@ export const PerformanceReviewManagement = () => {
         company_support: profileForm.company_support || null,
       };
 
-      if (perfProfile) {
+      if (perfProfile?.id) {
         const { error } = await (supabase.from('performance_profiles' as any) as any).update(payload).eq('id', perfProfile.id);
         if (error) throw error;
       } else {
