@@ -1,0 +1,4 @@
+CREATE POLICY "Finance can manage performance profiles" ON public.performance_profiles FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'finance')) WITH CHECK (public.has_role(auth.uid(), 'finance'));
+CREATE POLICY "Finance can manage performance reviews" ON public.performance_reviews FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'finance')) WITH CHECK (public.has_role(auth.uid(), 'finance'));
+CREATE POLICY "Finance can manage performance objectives" ON public.performance_objectives FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'finance')) WITH CHECK (public.has_role(auth.uid(), 'finance'));
+CREATE POLICY "Finance can manage quarterly notes" ON public.performance_quarterly_notes FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'finance')) WITH CHECK (public.has_role(auth.uid(), 'finance'));
