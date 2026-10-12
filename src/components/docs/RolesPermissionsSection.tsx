@@ -7,7 +7,7 @@ import { defaultPermissions, type Permission } from '@/lib/permissions';
 const roles: { key: string; label: string; color: string }[] = [
   { key: 'admin', label: 'Admin', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
   { key: 'account', label: 'Account', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
-  { key: 'finance', label: 'Finance', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
+  { key: 'finance', label: 'Finance & HR', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
   { key: 'team_leader', label: 'Team Leader', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' },
   { key: 'coordinator', label: 'Coordinator', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' },
   { key: 'member', label: 'Member', color: 'bg-muted text-muted-foreground' },

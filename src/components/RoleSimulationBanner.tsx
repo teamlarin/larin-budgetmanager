@@ -7,7 +7,7 @@ type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' 
 const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Admin',
   account: 'Account',
-  finance: 'Finance',
+  finance: 'Finance & HR',
   team_leader: 'Team Leader',
   coordinator: 'Coordinator',
   member: 'Member',
