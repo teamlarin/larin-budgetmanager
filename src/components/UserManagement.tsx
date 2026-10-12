@@ -913,7 +913,7 @@ export const UserManagement = () => {
                       <SelectContent>
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="account">Account</SelectItem>
-                  <SelectItem value="finance">Finance</SelectItem>
+                  <SelectItem value="finance">Finance &amp; HR</SelectItem>
                   <SelectItem value="team_leader">Team Leader</SelectItem>
                   <SelectItem value="coordinator">Coordinator</SelectItem>
                    <SelectItem value="member">Member</SelectItem>
@@ -1198,7 +1198,7 @@ export const UserManagement = () => {
                               <Badge variant={getRoleBadgeVariant("account")}>Account</Badge>
                             </SelectItem>
                             <SelectItem value="finance">
-                              <Badge variant={getRoleBadgeVariant("finance")}>Finance</Badge>
+                              <Badge variant={getRoleBadgeVariant("finance")}>Finance &amp; HR</Badge>
                             </SelectItem>
                             <SelectItem value="team_leader">
                               <Badge variant={getRoleBadgeVariant("team_leader")}>Team Leader</Badge>
@@ -1363,7 +1363,7 @@ export const UserManagement = () => {
                             <SelectContent>
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="account">Account</SelectItem>
-                  <SelectItem value="finance">Finance</SelectItem>
+                  <SelectItem value="finance">Finance &amp; HR</SelectItem>
                   <SelectItem value="team_leader">Team Leader</SelectItem>
                   <SelectItem value="coordinator">Coordinator</SelectItem>
                    <SelectItem value="member">Member</SelectItem>

@@ -141,7 +141,7 @@ const RolesDocumentation = () => {
   const roleLabels = {
     admin: "Admin",
     account: "Account",
-    finance: "Finance",
+    finance: "Finance & HR",
     team_leader: "Team Leader",
     coordinator: "Coordinator",
     member: "Member"

@@ -698,7 +698,7 @@ const Profile = () => {
                           : userProfile.role === 'account'
                           ? 'Account'
                           : userProfile.role === 'finance'
-                          ? 'Finance'
+                          ? 'Finance & HR'
                           : userProfile.role === 'team_leader'
                           ? 'Team Leader'
                           : userProfile.role === 'coordinator'
