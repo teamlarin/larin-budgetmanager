@@ -64,6 +64,22 @@ export function MeetTranscriptsBackfill() {
     }
   };
 
+  const dedupe = async () => {
+    setRunning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("copy-meet-attachments-to-project", { body: { dedupe: true } });
+      if (error) {
+        const details = error instanceof FunctionsHttpError ? await error.context.text() : error.message;
+        throw new Error(details);
+      }
+      toast.success(`${data.trashed} doppioni spostati nel cestino di Drive${data.failed ? `, ${data.failed} non rimossi (permessi)` : ""}`);
+    } catch (e) {
+      toast.error(`Pulizia interrotta: ${(e as Error).message}`);
+    } finally {
+      setRunning(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -93,6 +109,9 @@ export function MeetTranscriptsBackfill() {
           <Button onClick={run} disabled={running}>
             {running && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Sincronizza trascrizioni passate
+          </Button>
+          <Button variant="outline" onClick={dedupe} disabled={running}>
+            Rimuovi doppioni
           </Button>
         </div>
         {totals && (
