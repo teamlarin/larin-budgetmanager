@@ -98,6 +98,45 @@ async function findOrCreateMeetingFolder(accessToken: string, parentId: string):
   return created.id as string;
 }
 
+async function findFileInFolder(token: string, folderId: string, name: string): Promise<string | null> {
+  const q = `name='${escapeDriveQuery(name)}' and '${folderId}' in parents and trashed=false`;
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)&pageSize=1&supportsAllDrives=true&includeItemsFromAllDrives=true`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) return null;
+  const d = await res.json();
+  return d.files?.[0]?.id ?? null;
+}
+
+async function dedupeExisting(supabase: any, writerTokens: string[]) {
+  const { data: rows } = await supabase.from("meet_attachment_copies")
+    .select("id, project_id, google_event_id, source_file_id, copied_file_id, copied_at")
+    .not("copied_file_id", "is", null).order("copied_at", { ascending: true });
+  const keep = new Map<string, string>();
+  let trashed = 0, failed = 0;
+  for (const r of rows || []) {
+    const keys = [`${r.project_id}|e|${r.google_event_id}`, `${r.project_id}|s|${r.source_file_id}`];
+    const kept = keys.map((k) => keep.get(k)).find(Boolean);
+    if (!kept) { keys.forEach((k) => keep.set(k, r.copied_file_id)); continue; }
+    keys.forEach((k) => { if (!keep.has(k)) keep.set(k, kept); });
+    if (kept === r.copied_file_id) continue;
+    let ok = false;
+    for (const t of writerTokens) {
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(r.copied_file_id)}?supportsAllDrives=true`, {
+        method: "PATCH", headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ trashed: true }),
+      });
+      if (res.ok || res.status === 404) { ok = true; break; }
+    }
+    if (ok) {
+      await supabase.from("meet_attachment_copies").update({ copied_file_id: kept }).eq("id", r.id);
+      trashed++;
+    } else failed++;
+  }
+  return { trashed, failed };
+}
+
 function escapeDriveQuery(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 }
@@ -191,11 +230,30 @@ async function tryWithToken(supabase: any, tracking: any, project: any, tok: { t
 
   let copied = 0, already = 0;
   const errors: string[] = [];
-  for (const att of sources) {
-    const { data: existing } = await supabase.from("meet_attachment_copies").select("id")
-      .eq("tracking_id", tracking.id).eq("source_file_id", att.fileId).maybeSingle();
-    if (existing) { already++; continue; }
-    const name = `${datePrefix} - ${summary} - Trascrizione`;
+  const name = `${datePrefix} - ${summary} - Trascrizione`;
+
+  // Project-level dedup: one transcript per meeting per project, whoever saved it.
+  const { data: prior } = await supabase.from("meet_attachment_copies")
+    .select("copied_file_id, source_file_id, google_event_id")
+    .eq("project_id", project.id)
+    .or(`google_event_id.eq.${tracking.google_event_id},source_file_id.in.(${sources.map((s) => s.fileId).join(",")})`)
+    .not("copied_file_id", "is", null).limit(1);
+  let reuseId: string | null = prior?.[0]?.copied_file_id ?? null;
+  // Defensive check on Drive: same name already in the Meeting folder
+  if (!reuseId) reuseId = await findFileInFolder(writer, meetingFolderId, name);
+  if (reuseId) {
+    const { data: mine } = await supabase.from("meet_attachment_copies").select("id").eq("tracking_id", tracking.id).limit(1);
+    if (!mine?.length) {
+      await supabase.from("meet_attachment_copies").insert({
+        tracking_id: tracking.id, google_event_id: tracking.google_event_id,
+        source_file_id: prior?.[0]?.source_file_id || sources[0].fileId,
+        copied_file_id: reuseId, project_id: project.id, copied_by: callerId,
+      });
+    }
+    return { copied: 0, already: 1, errors, status: "ok" };
+  }
+
+  for (const att of sources.slice(0, 1)) {
     let newId: string | null = null;
 
     // 1) Direct copy if the writer is the reader
