@@ -11,6 +11,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const DOC_MIME = "application/vnd.google-apps.document";
+const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -156,7 +157,7 @@ async function searchDriveTranscripts(
 
 type Result = { tracking_id: string; copied: number; already_copied: number; skipped?: string; message: string; errors: string[]; used_account?: string };
 
-async function tryWithToken(supabase: any, tracking: any, project: any, tok: { token: string; calendars: string[] }, callerId: string) {
+async function tryWithToken(supabase: any, tracking: any, project: any, tok: { token: string; calendars: string[] }, callerId: string, writerTokens: string[] = []) {
   const accessToken = tok.token;
   let event: any = null;
   for (const calId of tok.calendars) {
@@ -257,10 +258,12 @@ async function processTracking(supabase: any, trackingId: string, callerId: stri
   const candidates = [tracking.user_id, ...adminIds.filter((id) => id !== tracking.user_id)];
   let last = "no_tokens";
   const allErrors: string[] = [];
+  const writerTokens: string[] = [];
+  for (const aid of adminIds) { const t = await getUserAccessToken(supabase, aid); if (t) writerTokens.push(t.token); }
   for (const uid of candidates) {
     const tok = await getUserAccessToken(supabase, uid);
     if (!tok) continue;
-    const r = await tryWithToken(supabase, tracking, project, tok, callerId);
+    const r = await tryWithToken(supabase, tracking, project, tok, callerId, writerTokens);
     allErrors.push(...r.errors);
     if (r.status === "ok") {
       return { ...base, copied: r.copied, already_copied: r.already, errors: [], used_account: uid === tracking.user_id ? "owner" : "admin",
