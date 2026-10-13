@@ -7,6 +7,7 @@ import { formatHours } from '@/lib/utils';
 
 type UserRole = 'admin' | 'account' | 'finance' | 'team_leader' | 'coordinator' | 'member';
 import { BudgetItemForm } from '@/components/BudgetItemForm';
+import { ImportActivitiesFromProjectDialog, type StagedImportedActivity } from '@/components/ImportActivitiesFromProjectDialog';
 import { BudgetSummaryCard } from '@/components/BudgetSummaryCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -132,6 +133,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
   // Use explicit budgetId if provided, otherwise fall back to projectId (for backward compatibility)
   const budgetId = explicitBudgetId || projectId;
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [addToGroup, setAddToGroup] = useState<{ key: string; label: string; templateId: string | null } | null>(null);
   const [groupToDelete, setGroupToDelete] = useState<{ key: string; label: string; ids: string[] } | null>(null);
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
@@ -589,6 +591,39 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     }
   };
 
+  const handleImportFromProject = async (activities: StagedImportedActivity[]) => {
+    if (!budgetId || activities.length === 0) return;
+    try {
+      const { data: maxOrderData } = await supabase
+        .from('budget_items')
+        .select('display_order')
+        .or(`budget_id.eq.${budgetId},project_id.eq.${budgetId}`)
+        .order('display_order', { ascending: false })
+        .limit(1);
+      let nextOrder = maxOrderData && maxOrderData.length > 0 ? maxOrderData[0].display_order + 1 : 1;
+      const insertData = activities.map((a) => ({
+        budget_id: budgetId,
+        category: a.category,
+        activity_name: a.activity_name,
+        hours_worked: a.hours_worked || 0,
+        duration_days: a.duration_days ?? null,
+        hourly_rate: 0,
+        total_cost: 0,
+        is_custom_activity: true,
+        is_product: false,
+        created_from: 'project',
+        display_order: nextOrder++,
+      }));
+      const { error } = await supabase.from('budget_items').insert(insertData as any);
+      if (error) throw error;
+      await refetch();
+      await updateBudgetTotals();
+    } catch (error) {
+      console.error('Error importing activities:', error);
+      toast({ title: 'Errore', description: "Impossibile importare le attività.", variant: 'destructive' });
+    }
+  };
+
   const handleUpdateItem = async (updatedItem: BudgetItem) => {
     try {
       const totalCost = updatedItem.hourlyRate * updatedItem.hoursWorked;
@@ -875,6 +910,12 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Aggiungi Elemento
+                </Button>
+              )}
+              {canEdit && (
+                <Button variant="outline" onClick={() => setIsImportOpen(true)} className="shadow-soft">
+                  <FolderInput className="w-4 h-4 mr-2" />
+                  Importa da progetto
                 </Button>
               )}
               <Button
