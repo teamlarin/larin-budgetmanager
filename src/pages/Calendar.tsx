@@ -1209,8 +1209,13 @@ export default function Calendar() {
         body: { tracking_id: trackingId },
       });
       if (error) {
-        console.error('Meet copy invoke error:', error);
-        toast.error('Impossibile recuperare la trascrizione della riunione');
+        let detail = '';
+        try {
+          const body = await (error as any).context?.json?.();
+          detail = body?.message || body?.error || '';
+        } catch { /* ignore */ }
+        console.error('Meet copy invoke error:', error, detail);
+        toast.error(detail || 'Impossibile recuperare la trascrizione della riunione');
         return;
       }
       const copied = (data?.copied as number) || 0;

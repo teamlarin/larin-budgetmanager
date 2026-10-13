@@ -35,6 +35,33 @@ async function refreshAccessToken(refreshToken: string) {
   return { access_token: data.access_token as string, expires_in: data.expires_in as number };
 }
 
+async function getUserAccessToken(supabase: any, userId: string): Promise<{ token: string; calendars: string[] } | null> {
+  const { data: t } = await supabase.from("user_google_tokens").select("*").eq("user_id", userId).maybeSingle();
+  if (!t) return null;
+  let token = t.access_token as string;
+  if (!t.token_expiry || new Date(t.token_expiry) < new Date(Date.now() + 60_000)) {
+    if (!t.refresh_token) return null;
+    const r = await refreshAccessToken(t.refresh_token);
+    if (!r) return null;
+    token = r.access_token;
+    await supabase.from("user_google_tokens").update({
+      access_token: token,
+      token_expiry: new Date(Date.now() + r.expires_in * 1000).toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq("user_id", userId);
+  }
+  const calendars = (t.selected_calendars && t.selected_calendars.length > 0) ? [...t.selected_calendars, "primary"] : ["primary"];
+  return { token, calendars };
+}
+
+async function getAdminIds(supabase: any): Promise<string[]> {
+  const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
+  const ids = (roles || []).map((r: any) => r.user_id);
+  if (ids.length === 0) return [];
+  const { data: toks } = await supabase.from("user_google_tokens").select("user_id").in("user_id", ids);
+  return (toks || []).map((t: any) => t.user_id);
+}
+
 async function findOrCreateMeetingFolder(accessToken: string, parentId: string): Promise<string | null> {
   const q = encodeURIComponent(
     `name='Meeting' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`
@@ -99,7 +126,7 @@ async function searchDriveTranscripts(
     const q = `mimeType='${DOC_MIME}' and trashed=false and name contains '${escapeDriveQuery(candidate)}'`;
     const url =
       `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}` +
-      `&fields=files(id,name,createdTime)&pageSize=25&orderBy=createdTime desc` +
+      `&fields=files(id,name,createdTime)&pageSize=50&orderBy=createdTime desc` +
       `&supportsAllDrives=true&includeItemsFromAllDrives=true`;
     const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
     if (!res.ok) {
@@ -126,163 +153,141 @@ async function searchDriveTranscripts(
   return [...results.values()];
 }
 
+
+type Result = { tracking_id: string; copied: number; already_copied: number; skipped?: string; message: string; errors: string[]; used_account?: string };
+
+async function tryWithToken(supabase: any, tracking: any, project: any, tok: { token: string; calendars: string[] }, callerId: string) {
+  const accessToken = tok.token;
+  let event: any = null;
+  for (const calId of tok.calendars) {
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events/${encodeURIComponent(tracking.google_event_id)}?fields=id,summary,start,organizer,attachments`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (res.ok) { event = await res.json(); break; }
+  }
+  const startStr: string = event?.start?.dateTime || event?.start?.date || tracking.scheduled_date;
+  const datePrefix = (startStr || "").substring(0, 10);
+  const rawSummary = event?.summary || tracking.google_event_title || "Meeting";
+  const summary = rawSummary.replace(/[\\/:*?"<>|]/g, "-").trim();
+
+  const attachments: any[] = Array.isArray(event?.attachments) ? event.attachments : [];
+  let sources: { fileId: string; name?: string }[] = attachments
+    .filter((a) => a.fileId && a.mimeType === DOC_MIME)
+    .map((a) => ({ fileId: a.fileId, name: a.title }));
+  if (sources.length === 0) sources = await searchDriveTranscripts(accessToken, rawSummary, datePrefix || null);
+  if (sources.length === 0) return { copied: 0, already: 0, errors: [] as string[], status: "no_transcripts" };
+
+  const meetingFolderId = await findOrCreateMeetingFolder(accessToken, project.drive_folder_id);
+  if (!meetingFolderId) return { copied: 0, already: 0, errors: ["folder_access"], status: "folder_error" };
+
+  let copied = 0, already = 0;
+  const errors: string[] = [];
+  for (const att of sources) {
+    const { data: existing } = await supabase.from("meet_attachment_copies").select("id")
+      .eq("tracking_id", tracking.id).eq("source_file_id", att.fileId).maybeSingle();
+    if (existing) { already++; continue; }
+    const copyRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(att.fileId)}/copy?supportsAllDrives=true&fields=id`,
+      { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: `${datePrefix} - ${summary} - Trascrizione`, parents: [meetingFolderId] }) },
+    );
+    if (!copyRes.ok) { const t = await copyRes.text(); console.error("Copy failed:", t); errors.push(`${copyRes.status}`); continue; }
+    const cf = await copyRes.json();
+    await supabase.from("meet_attachment_copies").insert({
+      tracking_id: tracking.id, google_event_id: tracking.google_event_id, source_file_id: att.fileId,
+      copied_file_id: cf.id, project_id: project.id, copied_by: callerId,
+    });
+    copied++;
+  }
+  return { copied, already, errors, status: copied > 0 || already > 0 ? "ok" : "copy_error" };
+}
+
+async function processTracking(supabase: any, trackingId: string, callerId: string, adminIds: string[]): Promise<Result> {
+  const { data: tracking } = await supabase.from("activity_time_tracking")
+    .select("id, user_id, google_event_id, google_event_title, scheduled_date, budget_items:budget_item_id (project_id, projects:project_id (id, name, drive_folder_id))")
+    .eq("id", trackingId).maybeSingle();
+  const base = { tracking_id: trackingId, copied: 0, already_copied: 0, errors: [] as string[] };
+  if (!tracking) return { ...base, skipped: "not_found", message: "Attività non trovata." };
+  if (!tracking.google_event_id) return { ...base, skipped: "no_google_event", message: "Questa attività non è collegata a un evento Google." };
+  const project = tracking.budget_items?.projects;
+  if (!project?.drive_folder_id) return { ...base, skipped: "no_project_drive_folder", message: "Il progetto non ha una cartella Drive collegata." };
+
+  const candidates = [tracking.user_id, ...adminIds.filter((id) => id !== tracking.user_id)];
+  let last = "no_tokens";
+  const allErrors: string[] = [];
+  for (const uid of candidates) {
+    const tok = await getUserAccessToken(supabase, uid);
+    if (!tok) continue;
+    const r = await tryWithToken(supabase, tracking, project, tok, callerId);
+    allErrors.push(...r.errors);
+    if (r.status === "ok") {
+      return { ...base, copied: r.copied, already_copied: r.already, errors: [], used_account: uid === tracking.user_id ? "owner" : "admin",
+        message: r.copied > 0 ? `Trascrizione copiata nella cartella Meeting di ${project.name}.` : "La trascrizione era già stata copiata nel progetto." };
+    }
+    if (last !== "copy_error" && last !== "folder_error") last = r.status;
+    if (r.status !== "no_transcripts") last = r.status;
+  }
+  const messages: Record<string, string> = {
+    no_tokens: "Nessun account Google collegato può accedere a questa riunione.",
+    no_transcripts: "Nessuna trascrizione trovata su Drive per questa riunione (né per l'assegnatario né per gli admin).",
+    folder_error: "Impossibile accedere alla cartella Drive del progetto con gli account disponibili.",
+    copy_error: "Google ha rifiutato la copia della trascrizione (permessi sul file).",
+  };
+  return { ...base, errors: allErrors, skipped: last, message: messages[last] || "Nessuna trascrizione copiata." };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return json({ error: "Unauthorized" }, 401);
-
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const jwt = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabase.auth.getUser(jwt);
+    const { data: { user }, error: userError } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
     if (userError || !user) return json({ error: "Invalid token" }, 401);
 
-    const { tracking_id } = await req.json();
-    if (!tracking_id) return json({ error: "tracking_id required" }, 400);
+    const body = await req.json().catch(() => ({}));
+    const adminIds = await getAdminIds(supabase);
 
-    const { data: tracking, error: trackErr } = await supabase
-      .from("activity_time_tracking")
-      .select("id, user_id, google_event_id, google_event_title, scheduled_date, budget_item_id, budget_items:budget_item_id (project_id, projects:project_id (id, name, drive_folder_id))")
-      .eq("id", tracking_id)
-      .maybeSingle();
+    if (body.batch) {
+      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
+      if (!isAdmin) return json({ error: "Solo gli admin possono avviare la sincronizzazione." }, 403);
+      const days = Math.min(Math.max(Number(body.days) || 90, 1), 730);
+      const offset = Math.max(Number(body.offset) || 0, 0);
+      const limit = Math.min(Math.max(Number(body.limit) || 10, 1), 25);
+      const since = new Date(Date.now() - days * 86400000).toISOString().substring(0, 10);
 
-    if (trackErr || !tracking) return json({ error: "Tracking not found" }, 404);
-    if (!tracking.google_event_id) {
-      return json({ copied: 0, skipped: "no_google_event", message: "Questa attività non è collegata a un evento Google." });
-    }
-
-    const project = (tracking as any).budget_items?.projects;
-    if (!project?.drive_folder_id) {
-      return json({ copied: 0, skipped: "no_project_drive_folder", message: "Il progetto non ha una cartella Drive collegata." });
-    }
-
-    const { data: tokenData } = await supabase
-      .from("user_google_tokens")
-      .select("*")
-      .eq("user_id", tracking.user_id)
-      .maybeSingle();
-
-    if (!tokenData) {
-      return json({ copied: 0, skipped: "no_google_tokens", message: "Google Calendar non è collegato per questa persona." });
-    }
-
-    let accessToken = tokenData.access_token;
-    if (new Date(tokenData.token_expiry) < new Date()) {
-      const refreshed = await refreshAccessToken(tokenData.refresh_token);
-      if (!refreshed) {
-        return json({ copied: 0, skipped: "token_refresh_failed", message: "Il collegamento a Google è scaduto: ricollega Google Calendar." });
+      let q = supabase.from("activity_time_tracking")
+        .select("id, budget_items!inner(project_id, projects!inner(drive_folder_id))")
+        .not("google_event_id", "is", null).not("actual_start_time", "is", null)
+        .gte("scheduled_date", since).not("budget_items.projects.drive_folder_id", "is", null)
+        .order("scheduled_date", { ascending: false }).order("id")
+        .range(offset, offset + limit - 1);
+      if (body.project_id) q = q.eq("budget_items.project_id", body.project_id);
+      const { data: rows, error } = await q;
+      if (error) return json({ error: error.message }, 500);
+      const ids = (rows || []).map((r: any) => r.id);
+      const { data: done } = ids.length
+        ? await supabase.from("meet_attachment_copies").select("tracking_id").in("tracking_id", ids)
+        : { data: [] };
+      const doneSet = new Set((done || []).map((d: any) => d.tracking_id));
+      const results: Result[] = [];
+      let alreadyPresent = 0;
+      for (const id of ids) {
+        if (doneSet.has(id)) { alreadyPresent++; continue; }
+        results.push(await processTracking(supabase, id, user.id, adminIds));
       }
-      accessToken = refreshed.access_token;
-      await supabase.from("user_google_tokens").update({
-        access_token: accessToken,
-        token_expiry: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
-        updated_at: new Date().toISOString(),
-      }).eq("user_id", tracking.user_id);
-    }
-
-    const calendarIds: string[] = (tokenData.selected_calendars && tokenData.selected_calendars.length > 0)
-      ? [...tokenData.selected_calendars, "primary"]
-      : ["primary"];
-
-    let event: any = null;
-    for (const calId of calendarIds) {
-      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events/${encodeURIComponent(tracking.google_event_id)}?fields=id,summary,start,organizer,attachments`;
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-      if (res.ok) {
-        event = await res.json();
-        break;
-      }
-    }
-
-    const startStr: string = event?.start?.dateTime || event?.start?.date || tracking.scheduled_date;
-    const datePrefix = (startStr || "").substring(0, 10);
-    const rawSummary = event?.summary || (tracking as any).google_event_title || "Meeting";
-    const summary = rawSummary.replace(/[\\/:*?"<>|]/g, "-").trim();
-
-    // 1) Attachments on the calendar event
-    const attachments: any[] = Array.isArray(event?.attachments) ? event.attachments : [];
-    let sources: { fileId: string; name?: string }[] = attachments
-      .filter((a) => a.fileId && a.mimeType === DOC_MIME)
-      .map((a) => ({ fileId: a.fileId, name: a.title }));
-    let source = "event_attachment";
-
-    // 2) Fallback: look for the transcript document directly on Drive
-    if (sources.length === 0) {
-      const found = await searchDriveTranscripts(accessToken, rawSummary, datePrefix || null);
-      if (found.length > 0) {
-        sources = found;
-        source = "drive_search";
-      }
-    }
-
-    if (sources.length === 0) {
       return json({
-        copied: 0,
-        skipped: "no_transcripts",
-        source: event ? "event_found" : "event_not_found",
-        message: event
-          ? "Nessuna trascrizione trovata per questa riunione (né allegata all'evento né su Drive)."
-          : "Evento Google non trovato e nessuna trascrizione individuata su Drive.",
+        processed: ids.length,
+        copied: results.reduce((a, r) => a + r.copied, 0),
+        already_present: alreadyPresent + results.filter((r) => r.already_copied > 0 && r.copied === 0).length,
+        not_found: results.filter((r) => r.skipped === "no_transcripts").length,
+        errors: results.filter((r) => r.skipped && r.skipped !== "no_transcripts").length,
+        next_offset: ids.length === limit ? offset + limit : null,
       });
     }
 
-    const meetingFolderId = await findOrCreateMeetingFolder(accessToken, project.drive_folder_id);
-    if (!meetingFolderId) {
-      return json({ copied: 0, error: "Cannot resolve Meeting subfolder", message: "Impossibile aprire o creare la sottocartella Meeting su Drive." }, 500);
-    }
-
-    let copied = 0;
-    let alreadyCopied = 0;
-    const errors: string[] = [];
-
-    for (const att of sources) {
-      const { data: existing } = await supabase
-        .from("meet_attachment_copies")
-        .select("id")
-        .eq("tracking_id", tracking.id)
-        .eq("source_file_id", att.fileId)
-        .maybeSingle();
-      if (existing) { alreadyCopied++; continue; }
-
-      const newName = `${datePrefix} - ${summary} - Trascrizione`;
-      const copyRes = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(att.fileId)}/copy?supportsAllDrives=true&fields=id`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ name: newName, parents: [meetingFolderId] }),
-        }
-      );
-
-      if (!copyRes.ok) {
-        const txt = await copyRes.text();
-        console.error("Copy failed:", txt);
-        errors.push(`${att.fileId}: ${copyRes.status}`);
-        continue;
-      }
-      const copiedFile = await copyRes.json();
-
-      await supabase.from("meet_attachment_copies").insert({
-        tracking_id: tracking.id,
-        google_event_id: tracking.google_event_id,
-        source_file_id: att.fileId,
-        copied_file_id: copiedFile.id,
-        project_id: project.id,
-        copied_by: user.id,
-      });
-      copied++;
-    }
-
-    const message = copied > 0
-      ? `Trascrizione copiata nella cartella Meeting di ${project.name}.`
-      : alreadyCopied > 0
-        ? "La trascrizione era già stata copiata nel progetto."
-        : errors.length > 0
-          ? "Google ha rifiutato la copia della trascrizione (permessi sul file)."
-          : "Nessuna trascrizione copiata.";
-
-    return json({ copied, already_copied: alreadyCopied, errors, source, project: project.name, message });
+    if (!body.tracking_id) return json({ error: "tracking_id required" }, 400);
+    const r = await processTracking(supabase, body.tracking_id, user.id, adminIds);
+    return json(r);
   } catch (e) {
     console.error("copy-meet-attachments error:", e);
     return json({ error: (e as Error).message, message: "Errore durante la copia della trascrizione." }, 500);
