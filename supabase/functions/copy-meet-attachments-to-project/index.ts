@@ -11,6 +11,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const DOC_MIME = "application/vnd.google-apps.document";
+const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -156,7 +157,7 @@ async function searchDriveTranscripts(
 
 type Result = { tracking_id: string; copied: number; already_copied: number; skipped?: string; message: string; errors: string[]; used_account?: string };
 
-async function tryWithToken(supabase: any, tracking: any, project: any, tok: { token: string; calendars: string[] }, callerId: string) {
+async function tryWithToken(supabase: any, tracking: any, project: any, tok: { token: string; calendars: string[] }, callerId: string, writerTokens: string[] = []) {
   const accessToken = tok.token;
   let event: any = null;
   for (const calId of tok.calendars) {
@@ -176,8 +177,17 @@ async function tryWithToken(supabase: any, tracking: any, project: any, tok: { t
   if (sources.length === 0) sources = await searchDriveTranscripts(accessToken, rawSummary, datePrefix || null);
   if (sources.length === 0) return { copied: 0, already: 0, errors: [] as string[], status: "no_transcripts" };
 
-  const meetingFolderId = await findOrCreateMeetingFolder(accessToken, project.drive_folder_id);
-  if (!meetingFolderId) return { copied: 0, already: 0, errors: ["folder_access"], status: "folder_error" };
+  // Writers: reader token first, then admin tokens (reader may only have drive.readonly)
+  const writers: string[] = [accessToken];
+  for (const w of writerTokens) if (!writers.includes(w)) writers.push(w);
+
+  let writer: string | null = null;
+  let meetingFolderId: string | null = null;
+  for (const w of writers) {
+    meetingFolderId = await findOrCreateMeetingFolder(w, project.drive_folder_id);
+    if (meetingFolderId) { writer = w; break; }
+  }
+  if (!meetingFolderId || !writer) return { copied: 0, already: 0, errors: ["folder_access"], status: "folder_error" };
 
   let copied = 0, already = 0;
   const errors: string[] = [];
@@ -185,16 +195,50 @@ async function tryWithToken(supabase: any, tracking: any, project: any, tok: { t
     const { data: existing } = await supabase.from("meet_attachment_copies").select("id")
       .eq("tracking_id", tracking.id).eq("source_file_id", att.fileId).maybeSingle();
     if (existing) { already++; continue; }
-    const copyRes = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(att.fileId)}/copy?supportsAllDrives=true&fields=id`,
-      { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ name: `${datePrefix} - ${summary} - Trascrizione`, parents: [meetingFolderId] }) },
-    );
-    if (!copyRes.ok) { const t = await copyRes.text(); console.error("Copy failed:", t); errors.push(`${copyRes.status}`); continue; }
-    const cf = await copyRes.json();
+    const name = `${datePrefix} - ${summary} - Trascrizione`;
+    let newId: string | null = null;
+
+    // 1) Direct copy if the writer is the reader
+    if (writer === accessToken) {
+      const copyRes = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(att.fileId)}/copy?supportsAllDrives=true&fields=id`,
+        { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ name, parents: [meetingFolderId] }) },
+      );
+      if (copyRes.ok) newId = (await copyRes.json()).id;
+      else console.error("Direct copy failed:", copyRes.status, await copyRes.text());
+    }
+
+    // 2) Read with reader (export), write with a writer token (upload converted to Google Doc)
+    if (!newId) {
+      const exp = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(att.fileId)}/export?mimeType=${encodeURIComponent(DOCX_MIME)}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+      if (!exp.ok) { console.error("Export failed:", exp.status, await exp.text()); errors.push(`export_${exp.status}`); continue; }
+      const content = await exp.blob();
+      for (const w of writers) {
+        const folderForW = w === writer ? meetingFolderId : await findOrCreateMeetingFolder(w, project.drive_folder_id);
+        if (!folderForW) continue;
+        const boundary = `b${crypto.randomUUID()}`;
+        const meta = JSON.stringify({ name, parents: [folderForW], mimeType: DOC_MIME });
+        const body = new Blob([
+          `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n`,
+          `--${boundary}\r\nContent-Type: ${DOCX_MIME}\r\n\r\n`, content, `\r\n--${boundary}--`,
+        ]);
+        const up = await fetch(
+          `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id`,
+          { method: "POST", headers: { Authorization: `Bearer ${w}`, "Content-Type": `multipart/related; boundary=${boundary}` }, body },
+        );
+        if (up.ok) { newId = (await up.json()).id; break; }
+        console.error("Upload failed:", up.status, await up.text());
+      }
+      if (!newId) { errors.push("upload_failed"); continue; }
+    }
+
     await supabase.from("meet_attachment_copies").insert({
       tracking_id: tracking.id, google_event_id: tracking.google_event_id, source_file_id: att.fileId,
-      copied_file_id: cf.id, project_id: project.id, copied_by: callerId,
+      copied_file_id: newId, project_id: project.id, copied_by: callerId,
     });
     copied++;
   }
@@ -214,10 +258,12 @@ async function processTracking(supabase: any, trackingId: string, callerId: stri
   const candidates = [tracking.user_id, ...adminIds.filter((id) => id !== tracking.user_id)];
   let last = "no_tokens";
   const allErrors: string[] = [];
+  const writerTokens: string[] = [];
+  for (const aid of adminIds) { const t = await getUserAccessToken(supabase, aid); if (t) writerTokens.push(t.token); }
   for (const uid of candidates) {
     const tok = await getUserAccessToken(supabase, uid);
     if (!tok) continue;
-    const r = await tryWithToken(supabase, tracking, project, tok, callerId);
+    const r = await tryWithToken(supabase, tracking, project, tok, callerId, writerTokens);
     allErrors.push(...r.errors);
     if (r.status === "ok") {
       return { ...base, copied: r.copied, already_copied: r.already, errors: [], used_account: uid === tracking.user_id ? "owner" : "admin",
