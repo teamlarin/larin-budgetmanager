@@ -1059,6 +1059,11 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
             </div>
           </div>
         )}
+      <ImportActivitiesFromProjectDialog
+          open={isImportOpen}
+          onOpenChange={setIsImportOpen}
+          onSelectActivities={handleImportFromProject}
+        />
       <BudgetItemForm
           key={addToGroup?.key || 'new-item'}
           isOpen={isFormOpen}
