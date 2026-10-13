@@ -30,7 +30,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Check, ChevronsUpDown } from 'lucide-react';
+import { Search, Check, ChevronsUpDown, FolderOpen } from 'lucide-react';
+import { ImportActivitiesFromProjectDialog, type StagedImportedActivity } from '@/components/ImportActivitiesFromProjectDialog';
 import {
   Popover,
   PopoverContent,
@@ -158,6 +159,8 @@ export const CreateProjectDialog = ({
   onProjectCreated,
 }: CreateProjectDialogProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [stagedActivities, setStagedActivities] = useState<StagedImportedActivity[]>([]);
+  const [importFromProjectOpen, setImportFromProjectOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [budgetTemplates, setBudgetTemplates] = useState<BudgetTemplate[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -220,6 +223,7 @@ export const CreateProjectDialog = ({
       fetchUsers();
       fetchAccountUsers();
       setCalculatedBudget(null);
+      setStagedActivities([]);
       setCurrentStep(1);
       setTemplateSearchQuery("");
       setServiceSearchQuery("");
@@ -487,7 +491,7 @@ export const CreateProjectDialog = ({
         : [];
 
       const totalBudget = calculatedBudget?.total || 0;
-      const totalHours = calculatedBudget?.hours || 0;
+      const totalHours = (calculatedBudget?.hours || 0) + stagedActivities.reduce((sum, a) => sum + (a.hours_worked || 0), 0);
       
       const projectType = selectedTemplates.length > 0
         ? selectedTemplates.map(t => t.name).join(', ')
@@ -617,6 +621,34 @@ export const CreateProjectDialog = ({
         }
       }
 
+      // Attività importate da un progetto esistente: solo nome/categoria/ore/durata, senza assegnatari né costi
+      if (stagedActivities.length > 0) {
+        const { data: maxOrder } = await supabase
+          .from('budget_items')
+          .select('display_order')
+          .eq('budget_id', newBudget.id)
+          .order('display_order', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        let order = (maxOrder?.display_order || 0) + 1;
+        const { error: importError } = await supabase.from('budget_items').insert(
+          stagedActivities.map((a) => ({
+            budget_id: newBudget.id,
+            activity_name: a.activity_name,
+            category: a.category,
+            hours_worked: a.hours_worked,
+            duration_days: a.duration_days,
+            hourly_rate: 0,
+            total_cost: 0,
+            is_custom_activity: true,
+            is_product: false,
+            created_from: 'project',
+            display_order: order++,
+          }))
+        );
+        if (importError) throw importError;
+      }
+
       // Save selected services to budget_services table
       // When budget is approved, a trigger will copy them to project_services
       if (data.service_ids && data.service_ids.length > 0) {
@@ -650,6 +682,7 @@ export const CreateProjectDialog = ({
       });
       
       form.reset();
+      setStagedActivities([]);
       setShowNewClientForm(false);
       setCurrentStep(1);
       onProjectCreated();
@@ -1274,6 +1307,42 @@ export const CreateProjectDialog = ({
                     );
                   }}
                 />
+
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Attività da progetto esistente (opzionale)</FormLabel>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setImportFromProjectOpen(true)}>
+                      <FolderOpen className="h-4 w-4 mr-2" />
+                      Importa da progetto
+                    </Button>
+                  </div>
+                  {stagedActivities.length > 0 && (
+                    <div className="border rounded-md divide-y text-sm">
+                      {stagedActivities.map((a, idx) => (
+                        <div key={idx} className="flex items-center gap-2 px-3 py-1.5">
+                          <span className="flex-1 truncate">{a.activity_name}</span>
+                          <span className="text-xs text-muted-foreground truncate max-w-[140px]">{a.source_project_name}</span>
+                          <span className="text-xs text-muted-foreground w-12 text-right">{a.hours_worked}h</span>
+                          <button
+                            type="button"
+                            className="hover:text-destructive px-1"
+                            onClick={() => setStagedActivities(prev => prev.filter((_, i) => i !== idx))}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      <div className="px-3 py-1.5 text-xs text-muted-foreground">
+                        {stagedActivities.length} attività · {formatHours(stagedActivities.reduce((s, a) => s + (a.hours_worked || 0), 0))} ore · senza assegnatari né costi
+                      </div>
+                    </div>
+                  )}
+                  <ImportActivitiesFromProjectDialog
+                    open={importFromProjectOpen}
+                    onOpenChange={setImportFromProjectOpen}
+                    onSelectActivities={(items) => setStagedActivities(prev => [...prev, ...items])}
+                  />
+                </div>
 
                 <FormField
                   control={form.control}
