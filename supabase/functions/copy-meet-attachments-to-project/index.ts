@@ -351,6 +351,15 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const adminIds = await getAdminIds(supabase);
 
+    if (body.dedupe) {
+      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
+      if (!isAdmin) return json({ error: "Solo gli admin possono rimuovere i doppioni." }, 403);
+      const tokens: string[] = [];
+      for (const aid of adminIds) { const t = await getUserAccessToken(supabase, aid); if (t) tokens.push(t.token); }
+      return json(await dedupeExisting(supabase, tokens));
+    }
+
+
     if (body.batch) {
       const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
       if (!isAdmin) return json({ error: "Solo gli admin possono avviare la sincronizzazione." }, 403);
