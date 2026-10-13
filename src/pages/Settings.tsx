@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { MeetTranscriptsBackfill } from "@/components/MeetTranscriptsBackfill";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserManagement } from "@/components/UserManagement";
@@ -254,6 +255,7 @@ const Settings = () => {
         {permissions.canManageUsers && (
           <TabsContent value="integrations" className="space-y-6">
             <IntegrationsTab />
+            {userRole === 'admin' && <MeetTranscriptsBackfill />}
           </TabsContent>
         )}
 
