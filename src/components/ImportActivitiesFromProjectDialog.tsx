@@ -10,7 +10,9 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
-import { FileDown, Loader2, ChevronsUpDown, Check, FolderOpen } from 'lucide-react';
+import { FileDown, Loader2, ChevronsUpDown, Check, FolderOpen, Users } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 interface ProjectActivity {
@@ -26,41 +28,62 @@ interface ProjectOption {
   id: string;
   name: string;
   client_name?: string;
+  status?: string;
 }
+
+export interface StagedImportedActivity {
+  activity_name: string;
+  category: string;
+  hours_worked: number;
+  duration_days: number | null;
+  source_project_name: string;
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  aperto: 'Aperto',
+  in_partenza: 'In partenza',
+  completato: 'Completato',
+};
 
 interface ImportActivitiesFromProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  projectId: string;
-  onImportComplete: () => void;
+  /** Progetto destinazione. Se assente (es. creazione budget), le attività vengono restituite via onSelectActivities. */
+  projectId?: string;
+  onImportComplete?: () => void;
+  onSelectActivities?: (activities: StagedImportedActivity[]) => void;
 }
 
 export const ImportActivitiesFromProjectDialog = ({
   open,
   onOpenChange,
   projectId,
-  onImportComplete
+  onImportComplete,
+  onSelectActivities
 }: ImportActivitiesFromProjectDialogProps) => {
   const queryClient = useQueryClient();
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [selectedActivityIds, setSelectedActivityIds] = useState<string[]>([]);
   const [comboboxOpen, setComboboxOpen] = useState(false);
+  const [resetHours, setResetHours] = useState(false);
 
   // Fetch open projects (exclude current)
   const { data: projects = [], isLoading: projectsLoading } = useQuery<ProjectOption[]>({
-    queryKey: ['projects-for-activity-import'],
+    queryKey: ['projects-for-activity-import', projectId ?? null],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('projects')
-        .select('id, name, clients(name)')
-        .neq('id', projectId)
-        .in('project_status', ['aperto', 'in_partenza'])
+        .select('id, name, project_status, clients(name)')
+        .in('project_status', ['aperto', 'in_partenza', 'completato'])
         .order('name');
+      if (projectId) q = q.neq('id', projectId);
+      const { data, error } = await q;
       if (error) throw error;
       return (data || []).map((p: any) => ({
         id: p.id,
         name: p.name,
-        client_name: p.clients?.name
+        client_name: p.clients?.name,
+        status: p.project_status,
       }));
     },
     enabled: open
@@ -81,6 +104,48 @@ export const ImportActivitiesFromProjectDialog = ({
       return (data || []).filter((item) => item.created_from !== 'calendar');
     },
     enabled: !!selectedProjectId
+  });
+
+  // Figure precedenti: persone che hanno registrato ore confermate sulle attività (solo indicazione testuale)
+  const { data: previousPeople = {} } = useQuery<Record<string, string[]>>({
+    queryKey: ['project-activities-previous-people', selectedProjectId, projectActivities.map(a => a.id).join(',')],
+    queryFn: async () => {
+      const ids = projectActivities.map(a => a.id);
+      const rows: { budget_item_id: string; user_id: string }[] = [];
+      for (let i = 0; i < ids.length; i += 100) {
+        const chunk = ids.slice(i, i + 100);
+        let from = 0;
+        while (true) {
+          const { data, error } = await supabase
+            .from('activity_time_tracking')
+            .select('budget_item_id, user_id')
+            .in('budget_item_id', chunk)
+            .not('actual_start_time', 'is', null)
+            .range(from, from + 999);
+          if (error) throw error;
+          rows.push(...((data || []) as any));
+          if (!data || data.length < 1000) break;
+          from += 1000;
+        }
+      }
+      const userIds = [...new Set(rows.map(r => r.user_id))];
+      const names: Record<string, string> = {};
+      if (userIds.length > 0) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', userIds);
+        (profs || []).forEach((p: any) => {
+          names[p.id] = `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Utente';
+        });
+      }
+      const map: Record<string, Set<string>> = {};
+      rows.forEach(r => {
+        (map[r.budget_item_id] ||= new Set()).add(names[r.user_id] || 'Utente');
+      });
+      return Object.fromEntries(Object.entries(map).map(([k, v]) => [k, [...v].sort((a, b) => a.localeCompare(b, 'it'))]));
+    },
+    enabled: projectActivities.length > 0
   });
 
 
@@ -106,6 +171,19 @@ export const ImportActivitiesFromProjectDialog = ({
         throw new Error('Seleziona almeno un\'attività');
       }
 
+      const selected = projectActivities.filter(a => selectedActivityIds.includes(a.id));
+      if (!projectId) {
+        const sourceName = projects.find(p => p.id === selectedProjectId)?.name || '';
+        onSelectActivities?.(selected.map(a => ({
+          activity_name: a.activity_name,
+          category: a.category,
+          hours_worked: resetHours ? 0 : (a.hours_worked || 0),
+          duration_days: a.duration_days,
+          source_project_name: sourceName,
+        })));
+        return selected.length;
+      }
+
       const { data: maxOrderData } = await supabase
         .from('budget_items')
         .select('display_order')
@@ -121,7 +199,7 @@ export const ImportActivitiesFromProjectDialog = ({
         project_id: projectId,
         activity_name: activity.activity_name,
         category: activity.category,
-        hours_worked: activity.hours_worked,
+        hours_worked: resetHours ? 0 : activity.hours_worked,
         hourly_rate: 0,
         total_cost: 0,
         display_order: nextOrder++,
@@ -135,10 +213,14 @@ export const ImportActivitiesFromProjectDialog = ({
       return inserts.length;
     },
     onSuccess: (count) => {
-      queryClient.invalidateQueries({ queryKey: ['budget-items', projectId] });
-      toast.success(`${count} attività importate con successo`);
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ['budget-items', projectId] });
+        toast.success(`${count} attività importate con successo`);
+      } else {
+        toast.success(`${count} attività aggiunte al budget`);
+      }
       handleClose();
-      onImportComplete();
+      onImportComplete?.();
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Errore durante l\'importazione');
@@ -149,6 +231,7 @@ export const ImportActivitiesFromProjectDialog = ({
     setSelectedProjectId('');
     setSelectedActivityIds([]);
     setComboboxOpen(false);
+    setResetHours(false);
     onOpenChange(false);
   };
 
@@ -214,7 +297,14 @@ export const ImportActivitiesFromProjectDialog = ({
                             )}
                           />
                           <div className="flex flex-col">
-                            <span>{project.name}</span>
+                            <span className="flex items-center gap-2">
+                              {project.name}
+                              {project.status && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                  {STATUS_LABEL[project.status] || project.status}
+                                </Badge>
+                              )}
+                            </span>
                             {project.client_name && (
                               <span className="text-xs text-muted-foreground">{project.client_name}</span>
                             )}
@@ -240,6 +330,12 @@ export const ImportActivitiesFromProjectDialog = ({
                 </Button>
               </div>
 
+              <div className="flex items-center gap-2">
+                <Switch id="reset-hours" checked={resetHours} onCheckedChange={setResetHours} />
+                <Label htmlFor="reset-hours" className="text-sm font-normal cursor-pointer">Azzera ore stimate</Label>
+              </div>
+
+              <TooltipProvider delayDuration={150}>
               <div className="flex-1 overflow-y-auto border rounded-lg divide-y">
                 {projectActivities.map(activity => {
                   const isSelected = selectedActivityIds.includes(activity.id);
@@ -261,19 +357,32 @@ export const ImportActivitiesFromProjectDialog = ({
                           <div className="flex items-center gap-2">
                             <span className="font-medium truncate">{activity.activity_name}</span>
                             <Badge className={categoryColor}>{activity.category}</Badge>
+                            {previousPeople[activity.id]?.length ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-muted-foreground/70 hover:text-foreground" onClick={(e) => e.stopPropagation()}>
+                                    <Users className="h-3.5 w-3.5" />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                  Svolta in precedenza da: {previousPeople[activity.id].join(', ')}
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : null}
                           </div>
                         </div>
                         <span className="text-sm text-muted-foreground whitespace-nowrap">
-                          {activity.hours_worked}h
+                          {resetHours ? <><s className="opacity-60">{activity.hours_worked}h</s> 0h</> : `${activity.hours_worked}h`}
                         </span>
                       </div>
                     </div>
                   );
                 })}
               </div>
+              </TooltipProvider>
 
               <p className="text-sm text-muted-foreground">
-                {selectedActivityIds.length} di {projectActivities.length} attività selezionate
+                {selectedActivityIds.length} di {projectActivities.length} attività selezionate · assegnatari, tariffe e costi non vengono copiati
               </p>
             </div>
           )}
@@ -305,7 +414,7 @@ export const ImportActivitiesFromProjectDialog = ({
             ) : (
               <>
                 <FileDown className="h-4 w-4 mr-2" />
-                Importa ({selectedActivityIds.length})
+                {projectId ? 'Importa' : 'Aggiungi'} ({selectedActivityIds.length})
               </>
             )}
           </Button>
