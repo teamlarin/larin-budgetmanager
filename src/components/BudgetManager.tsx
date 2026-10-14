@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BudgetItem, Category, BudgetSummary, budgetItemTotal } from '@/types/budget';
 import { assignees } from '@/data/assignees';
 import { getRolePermissions } from '@/lib/permissions';
@@ -40,7 +40,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, Copy, MoreVertical, ChevronDown, ChevronRight, FolderInput, Package } from 'lucide-react';
+import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, Copy, MoreVertical, ChevronDown, ChevronRight, FolderInput, Package, Check, X, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
@@ -315,6 +315,25 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     return map;
   }, [referencedTemplates]);
 
+  // Titoli personalizzati delle sezioni (valgono solo per questo budget)
+  const queryClient = useQueryClient();
+  const { data: sectionTitleOverrides = {} } = useQuery<Record<string, string>>({
+    queryKey: ['budget-section-titles', budgetId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('budget_section_titles')
+        .select('budget_template_id, title')
+        .eq('budget_id', budgetId);
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      (data || []).forEach((row: any) => {
+        map[row.budget_template_id ? `tpl:${row.budget_template_id}` : '__custom__'] = row.title;
+      });
+      return map;
+    },
+    enabled: !!budgetId,
+  });
+
   // Prodotti collegati ai modelli referenziati (solo visualizzazione badge)
   const { data: templateLinkedProducts = [] } = useQuery({
     queryKey: ['budget-template-linked-products', referencedTemplateIds],
@@ -379,6 +398,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
   type ItemGroup = {
     key: string;
     label: string;
+    defaultLabel: string;
     discipline: string | null;
     items: BudgetItem[];
     totalHours: number;
@@ -412,8 +432,11 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
         label = 'Attività personalizzate';
       }
 
+      const originalLabel = label;
+      label = sectionTitleOverrides[key] ?? label;
+
       if (!map.has(key)) {
-        map.set(key, { key, label, discipline, items: [], totalHours: 0, totalCost: 0, linkedProducts });
+        map.set(key, { key, label, defaultLabel: originalLabel, discipline, items: [], totalHours: 0, totalCost: 0, linkedProducts });
         order.push(key);
       }
       const group = map.get(key)!;
@@ -435,7 +458,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     }
 
     return order.map((k) => map.get(k)!);
-  }, [budgetItems, templatesById, templateLinkedProducts, linkedProductsById]);
+  }, [budgetItems, templatesById, templateLinkedProducts, linkedProductsById, sectionTitleOverrides]);
 
   // Sezioni disponibili come destinazione per lo spostamento di una voce
   const sectionOptions = useMemo<{ templateId: string | null; label: string }[]>(() => {
@@ -445,7 +468,8 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
         options.push({ templateId: g.key.slice(4), label: g.label });
       }
     });
-    options.push({ templateId: null, label: 'Attività personalizzate' });
+    const customGroup = groupedItems.find((g) => g.key === '__custom__');
+    options.push({ templateId: null, label: customGroup ? customGroup.label : 'Attività personalizzate' });
     return options;
   }, [groupedItems]);
 
@@ -706,6 +730,35 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       toast({
         title: 'Errore',
         description: "Si è verificato un errore durante lo spostamento della voce.",
+        variant: 'destructive',
+      });
+    }
+  };
+
+  /** Rinomina (o ripristina) il titolo di una sezione, valido solo per questo budget */
+  const handleRenameSection = async (templateId: string | null, title: string | null) => {
+    if (!budgetId) return;
+    try {
+      const table = supabase.from('budget_section_titles');
+      if (!title || title.trim() === '') {
+        let del = table.delete().eq('budget_id', budgetId);
+        del = templateId ? del.eq('budget_template_id', templateId) : del.is('budget_template_id', null);
+        const { error } = await del;
+        if (error) throw error;
+      } else {
+        const { error } = await table.upsert(
+          { budget_id: budgetId, budget_template_id: templateId, title: title.trim() },
+          { onConflict: 'budget_id,budget_template_id' }
+        );
+        if (error) throw error;
+      }
+      await queryClient.invalidateQueries({ queryKey: ['budget-section-titles', budgetId] });
+      toast({ title: 'Titolo sezione aggiornato' });
+    } catch (error) {
+      console.error('Error renaming budget section:', error);
+      toast({
+        title: 'Errore',
+        description: "Si è verificato un errore durante la rinomina della sezione.",
         variant: 'destructive',
       });
     }
@@ -1004,6 +1057,15 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                           <SortableGroupHeader
                             groupKey={group.key}
                             label={group.label}
+                            defaultLabel={group.defaultLabel}
+                            isOverridden={!!sectionTitleOverrides[group.key]}
+                            canRename={group.key !== '__products__'}
+                            onRename={(title) =>
+                              handleRenameSection(
+                                group.key.startsWith('tpl:') ? group.key.slice(4) : null,
+                                title
+                              )
+                            }
                             discipline={group.discipline}
                             linkedProducts={group.linkedProducts}
                             itemsCount={group.items.length}
@@ -1262,6 +1324,10 @@ const SortableRow = ({ item, onEdit, onDelete, onDuplicate, onMoveToSection, sec
 interface SortableGroupHeaderProps {
   groupKey: string;
   label: string;
+  defaultLabel: string;
+  isOverridden: boolean;
+  canRename: boolean;
+  onRename: (title: string | null) => void | Promise<void>;
   discipline: string | null;
   linkedProducts?: { id: string; name: string; code: string }[];
   itemsCount: number;
@@ -1278,6 +1344,10 @@ interface SortableGroupHeaderProps {
 const SortableGroupHeader = ({
   groupKey,
   label,
+  defaultLabel,
+  isOverridden,
+  canRename,
+  onRename,
   discipline,
   linkedProducts = [],
   itemsCount,
@@ -1290,6 +1360,23 @@ const SortableGroupHeader = ({
   canEdit,
   colSpan,
 }: SortableGroupHeaderProps) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(label);
+
+  const startEdit = () => {
+    setDraft(label);
+    setEditing(true);
+  };
+  const commitEdit = async () => {
+    const t = draft.trim();
+    setEditing(false);
+    if (t === '' || t === label) return;
+    await onRename(t);
+  };
+  const resetTitle = async () => {
+    setEditing(false);
+    await onRename(null);
+  };
   const {
     attributes,
     listeners,
@@ -1330,7 +1417,75 @@ const SortableGroupHeader = ({
           ) : (
             <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
           )}
-          <span className="font-semibold text-sm">{label}</span>
+          {editing ? (
+            <div
+              className="flex items-center gap-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Input
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitEdit();
+                  if (e.key === 'Escape') setEditing(false);
+                }}
+                className="h-7 w-56 text-sm"
+                placeholder={defaultLabel}
+              />
+              {isOverridden && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs text-muted-foreground"
+                  onClick={resetTitle}
+                  title={`Ripristina "${defaultLabel}"`}
+                >
+                  Ripristina
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={commitEdit}
+                title="Salva titolo"
+              >
+                <Check className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => setEditing(false)}
+                title="Annulla"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <span className="font-semibold text-sm">{label}</span>
+              {canEdit && canRename && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startEdit();
+                  }}
+                  title={
+                    isOverridden
+                      ? `Titolo personalizzato (originale: "${defaultLabel}")`
+                      : 'Rinomina sezione'
+                  }
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </>
+          )}
           {discipline && (
             <Badge
               variant="outline"
