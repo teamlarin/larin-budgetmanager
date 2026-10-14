@@ -55,6 +55,8 @@ interface BudgetItemFormProps {
   /** Sezione (servizio/template) di destinazione per le nuove voci */
   presetSourceTemplateId?: string | null;
   presetGroupLabel?: string | null;
+  /** La sezione di destinazione ha già un prodotto collegato */
+  sectionHasLinkedProduct?: boolean;
 }
 
 export const BudgetItemForm = ({
@@ -65,7 +67,8 @@ export const BudgetItemForm = ({
   isEditing = false,
   billingType = null,
   presetSourceTemplateId = null,
-  presetGroupLabel = null
+  presetGroupLabel = null,
+  sectionHasLinkedProduct = false
 }: BudgetItemFormProps) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('predefined');
@@ -431,7 +434,7 @@ export const BudgetItemForm = ({
     (formData.activityName.trim() &&
     (formData.isProduct || (formData.assigneeId && formData.hourlyRate > 0)) &&
     // Le attività personalizzate (senza modello) richiedono un prodotto collegato
-    (isEditing || activeTab !== 'custom' || !!formData.linkedProductId));
+    (isEditing || activeTab !== 'custom' || sectionHasLinkedProduct || !!formData.linkedProductId));
 
   const externalPrice = externalCostPrice(formData.externalCostBase, formData.externalCostMarkup);
   const externalFieldsUi = (
@@ -815,7 +818,7 @@ export const BudgetItemForm = ({
                 {/* Prodotto collegato (obbligatorio senza modello): non entra come voce
                     di budget, ma nell'offerta la quota di queste attività diventa la sua riga. */}
                 <div className="space-y-2">
-                  <Label>Prodotto collegato *</Label>
+                  <Label>Prodotto collegato {sectionHasLinkedProduct ? '(facoltativo: ereditato dalla sezione)' : '*'}</Label>
                   <Select
                     value={formData.linkedProductId}
                     onValueChange={(value: string) => setFormData(prev => ({ ...prev, linkedProductId: value }))}
