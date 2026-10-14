@@ -106,6 +106,7 @@ export const ProjectActivitiesManager = ({
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editedDescription, setEditedDescription] = useState('');
   const [canEditDescription, setCanEditDescription] = useState(false);
+  const [isExternalUser, setIsExternalUser] = useState(false);
 
   // Check if current user can assign activities (admin, team_leader, coordinator, or project leader)
   useEffect(() => {
@@ -126,7 +127,9 @@ export const ProjectActivitiesManager = ({
       // Check if user is admin, team_leader, account, or coordinator
       const hasAssignRole = userRoles.includes('admin') || 
                            userRoles.includes('team_leader') || 
-                           userRoles.includes('coordinator');
+                           userRoles.includes('coordinator') ||
+                           userRoles.includes('external');
+      setIsExternalUser(userRoles.includes('external'));
       
       // Check if user can edit description (admin, account, team_leader)
       const hasDescriptionEditRole = userRoles.includes('admin') || 
