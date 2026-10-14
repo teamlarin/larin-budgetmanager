@@ -458,7 +458,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     }
 
     return order.map((k) => map.get(k)!);
-  }, [budgetItems, templatesById, templateLinkedProducts, linkedProductsById]);
+  }, [budgetItems, templatesById, templateLinkedProducts, linkedProductsById, sectionTitleOverrides]);
 
   // Sezioni disponibili come destinazione per lo spostamento di una voce
   const sectionOptions = useMemo<{ templateId: string | null; label: string }[]>(() => {
@@ -729,6 +729,35 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       toast({
         title: 'Errore',
         description: "Si è verificato un errore durante lo spostamento della voce.",
+        variant: 'destructive',
+      });
+    }
+  };
+
+  /** Rinomina (o ripristina) il titolo di una sezione, valido solo per questo budget */
+  const handleRenameSection = async (templateId: string | null, title: string | null) => {
+    if (!budgetId) return;
+    try {
+      const table = supabase.from('budget_section_titles');
+      if (!title || title.trim() === '') {
+        let del = table.delete().eq('budget_id', budgetId);
+        del = templateId ? del.eq('budget_template_id', templateId) : del.is('budget_template_id', null);
+        const { error } = await del;
+        if (error) throw error;
+      } else {
+        const { error } = await table.upsert(
+          { budget_id: budgetId, budget_template_id: templateId, title: title.trim() },
+          { onConflict: 'budget_id,budget_template_id' }
+        );
+        if (error) throw error;
+      }
+      await queryClient.invalidateQueries({ queryKey: ['budget-section-titles', budgetId] });
+      toast({ title: 'Titolo sezione aggiornato' });
+    } catch (error) {
+      console.error('Error renaming budget section:', error);
+      toast({
+        title: 'Errore',
+        description: "Si è verificato un errore durante la rinomina della sezione.",
         variant: 'destructive',
       });
     }
@@ -1027,6 +1056,15 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                           <SortableGroupHeader
                             groupKey={group.key}
                             label={group.label}
+                            defaultLabel={group.defaultLabel}
+                            isOverridden={!!sectionTitleOverrides[group.key]}
+                            canRename={group.key !== '__products__'}
+                            onRename={(title) =>
+                              handleRenameSection(
+                                group.key.startsWith('tpl:') ? group.key.slice(4) : null,
+                                title
+                              )
+                            }
                             discipline={group.discipline}
                             linkedProducts={group.linkedProducts}
                             itemsCount={group.items.length}
