@@ -46,8 +46,10 @@ export const generateOfferFromBudget = async (
       .order('display_order');
     if (itemsError) throw itemsError;
 
-    const productItems = (budgetItems || []).filter((item) => item.is_product);
-    const activityItems = (budgetItems || []).filter((item) => !item.is_product);
+    // I costi esterni diventano righe proprie al prezzo con ricarico, come i prodotti
+    const isOwnLine = (item: any) => item.is_product || item.is_external_cost;
+    const productItems = (budgetItems || []).filter(isOwnLine);
+    const activityItems = (budgetItems || []).filter((item) => !isOwnLine(item));
     const productsTotal = productItems.reduce((sum, item) => sum + Number(item.total_cost || 0), 0);
 
     // Il totale del budget include già il margine: la parte residuale è il
