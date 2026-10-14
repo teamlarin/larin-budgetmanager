@@ -334,6 +334,31 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     enabled: !!budgetId,
   });
 
+  // Prodotto della sezione sovrascritto per questo budget (templateId -> productId | null)
+  const { data: sectionProductOverrides = {} } = useQuery<Record<string, string | null>>({
+    queryKey: ['budget-section-products', budgetId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('budget_section_products' as any)
+        .select('budget_template_id, product_id')
+        .eq('budget_id', budgetId);
+      if (error) throw error;
+      const map: Record<string, string | null> = {};
+      ((data || []) as any[]).forEach((r) => { map[r.budget_template_id] = r.product_id; });
+      return map;
+    },
+    enabled: !!budgetId,
+  });
+
+  const { data: productCatalog = [] } = useQuery({
+    queryKey: ['products-catalog-min'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('products').select('id, name, code').order('name');
+      if (error) throw error;
+      return (data || []) as { id: string; name: string; code: string }[];
+    },
+  });
+
   // Prodotti collegati ai modelli referenziati (solo visualizzazione badge)
   const { data: templateLinkedProducts = [] } = useQuery({
     queryKey: ['budget-template-linked-products', referencedTemplateIds],
@@ -421,9 +446,15 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
         key = `tpl:${tpl.id}`;
         label = tpl.name;
         discipline = tpl.discipline || null;
-        linkedProducts = templateLinkedProducts
-          .filter((link: any) => link.budget_template_id === tpl.id && link.products)
-          .map((link: any) => link.products as { id: string; name: string; code: string });
+        if (tpl.id in sectionProductOverrides) {
+          const pid = sectionProductOverrides[tpl.id];
+          const p = pid ? productCatalog.find((x) => x.id === pid) : null;
+          linkedProducts = p ? [p] : [];
+        } else {
+          linkedProducts = templateLinkedProducts
+            .filter((link: any) => link.budget_template_id === tpl.id && link.products)
+            .map((link: any) => link.products as { id: string; name: string; code: string });
+        }
       } else if (item.isProduct) {
         key = '__products__';
         label = 'Prodotti';
@@ -458,7 +489,22 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     }
 
     return order.map((k) => map.get(k)!);
-  }, [budgetItems, templatesById, templateLinkedProducts, linkedProductsById, sectionTitleOverrides]);
+  }, [budgetItems, templatesById, templateLinkedProducts, linkedProductsById, sectionTitleOverrides, sectionProductOverrides, productCatalog]);
+
+  const handleChangeSectionProduct = async (templateId: string, productId: string | null | undefined) => {
+    const { error } = productId === undefined
+      ? await supabase.from('budget_section_products' as any).delete().eq('budget_id', budgetId).eq('budget_template_id', templateId)
+      : await supabase.from('budget_section_products' as any).upsert(
+          { budget_id: budgetId, budget_template_id: templateId, product_id: productId, updated_at: new Date().toISOString() } as any,
+          { onConflict: 'budget_id,budget_template_id' }
+        );
+    if (error) {
+      toast({ title: 'Errore', description: error.message, variant: 'destructive' });
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ['budget-section-products', budgetId] });
+    toast({ title: productId === undefined ? 'Prodotto del modello ripristinato' : 'Prodotto della sezione aggiornato' });
+  };
 
   // Sezioni disponibili come destinazione per lo spostamento di una voce
   const sectionOptions = useMemo<{ templateId: string | null; label: string }[]>(() => {
@@ -1068,6 +1114,10 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
                             }
                             discipline={group.discipline}
                             linkedProducts={group.linkedProducts}
+                            canChangeProduct={group.key.startsWith('tpl:')}
+                            isProductOverridden={group.key.startsWith('tpl:') && group.key.slice(4) in sectionProductOverrides}
+                            productOptions={productCatalog}
+                            onChangeProduct={(pid) => handleChangeSectionProduct(group.key.slice(4), pid)}
                             itemsCount={group.items.length}
                             totalHours={group.totalHours}
                             totalCost={group.totalCost}
@@ -1343,6 +1393,11 @@ interface SortableGroupHeaderProps {
   onAddItem: () => void;
   canEdit: boolean;
   colSpan: number;
+  canChangeProduct?: boolean;
+  isProductOverridden?: boolean;
+  productOptions?: { id: string; name: string; code: string }[];
+  /** product id, null = nessun prodotto, undefined = ripristina modello */
+  onChangeProduct?: (productId: string | null | undefined) => void | Promise<void>;
 }
 
 const SortableGroupHeader = ({
@@ -1363,9 +1418,14 @@ const SortableGroupHeader = ({
   onAddItem,
   canEdit,
   colSpan,
+  canChangeProduct = false,
+  isProductOverridden = false,
+  productOptions = [],
+  onChangeProduct,
 }: SortableGroupHeaderProps) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(label);
+  const [productSearch, setProductSearch] = useState('');
 
   const startEdit = () => {
     setDraft(label);
@@ -1498,17 +1558,67 @@ const SortableGroupHeader = ({
               {getDisciplineLabel(discipline as any)}
             </Badge>
           )}
-          {linkedProducts.map((p) => (
-            <Badge
-              key={p.id}
-              variant="secondary"
-              className="text-[10px] gap-1"
-              title={`Prodotto collegato: sarà la riga dell'offerta per queste attività`}
-            >
-              <Package className="h-3 w-3" />
-              {p.name} ({p.code})
-            </Badge>
-          ))}
+          {canEdit && canChangeProduct && onChangeProduct ? (
+            <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1">
+              <Select
+                value={linkedProducts.length === 1 ? linkedProducts[0].id : linkedProducts.length === 0 ? '__none__' : undefined}
+                onValueChange={(v) => {
+                  if (v === '__reset__') onChangeProduct(undefined);
+                  else onChangeProduct(v === '__none__' ? null : v);
+                }}
+              >
+                <SelectTrigger
+                  className="h-6 w-auto max-w-[280px] gap-1 rounded-full border-0 bg-secondary px-2 text-[10px] font-semibold text-secondary-foreground"
+                  title="Prodotto collegato: sarà la riga dell'offerta per queste attività. Clicca per modificarlo (solo per questo budget)"
+                >
+                  <Package className="h-3 w-3 shrink-0" />
+                  <span className="truncate">
+                    {linkedProducts.length === 0
+                      ? 'Nessun prodotto'
+                      : linkedProducts.map((p) => `${p.name} (${p.code})`).join(', ')}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  <div className="p-2 sticky top-0 bg-popover z-10">
+                    <Input
+                      placeholder="Cerca prodotto..."
+                      value={productSearch}
+                      onChange={(e) => setProductSearch(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      className="h-8"
+                    />
+                  </div>
+                  {isProductOverridden && (
+                    <SelectItem value="__reset__">↺ Ripristina prodotto del modello</SelectItem>
+                  )}
+                  <SelectItem value="__none__">Nessun prodotto</SelectItem>
+                  {productOptions
+                    .filter((p) => {
+                      const q = productSearch.toLowerCase();
+                      return !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q);
+                    })
+                    .map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} ({p.code})
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            linkedProducts.map((p) => (
+              <Badge
+                key={p.id}
+                variant="secondary"
+                className="text-[10px] gap-1"
+                title={`Prodotto collegato: sarà la riga dell'offerta per queste attività`}
+              >
+                <Package className="h-3 w-3" />
+                {p.name} ({p.code})
+              </Badge>
+            ))
+          )}
           <div className="ml-auto flex items-center gap-3">
             <span className="text-xs text-muted-foreground">
               {itemsCount} {itemsCount === 1 ? 'voce' : 'voci'}

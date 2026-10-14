@@ -486,6 +486,55 @@ export type Database = {
         }
         Relationships: []
       }
+      budget_section_products: {
+        Row: {
+          budget_id: string
+          budget_template_id: string
+          created_at: string
+          id: string
+          product_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          budget_id: string
+          budget_template_id: string
+          created_at?: string
+          id?: string
+          product_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          budget_id?: string
+          budget_template_id?: string
+          created_at?: string
+          id?: string
+          product_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_section_products_budget_id_fkey"
+            columns: ["budget_id"]
+            isOneToOne: false
+            referencedRelation: "budgets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_section_products_budget_template_id_fkey"
+            columns: ["budget_template_id"]
+            isOneToOne: false
+            referencedRelation: "budget_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_section_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       budget_section_titles: {
         Row: {
           budget_id: string
