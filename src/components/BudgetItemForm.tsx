@@ -866,7 +866,7 @@ export const BudgetItemForm = ({
 
           {isEditing && formData.isExternalCost && externalFieldsUi}
 
-          {(isEditing || activeTab === 'custom' || selectedTemplateActivities.length > 0) && (
+          {(isEditing || activeTab === 'custom' || activeTab === 'external' || selectedTemplateActivities.length > 0) && (
             <>
               {!formData.isCustomActivity && !isEditing && !formData.isProduct && !formData.isExternalCost && (
                 <div className="bg-muted/50 rounded-lg p-4 border">
