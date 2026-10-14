@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BudgetItem, Category, BudgetSummary, budgetItemTotal } from '@/types/budget';
 import { assignees } from '@/data/assignees';
 import { getRolePermissions } from '@/lib/permissions';
@@ -40,7 +40,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, Copy, MoreVertical, ChevronDown, ChevronRight, FolderInput, Package } from 'lucide-react';
+import { Plus, Download, Edit, Trash2, GripVertical, ArrowUpDown, Copy, MoreVertical, ChevronDown, ChevronRight, FolderInput, Package, Check, X, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getCategoryBadgeColor } from '@/lib/categoryColors';
@@ -315,6 +315,25 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
     return map;
   }, [referencedTemplates]);
 
+  // Titoli personalizzati delle sezioni (valgono solo per questo budget)
+  const queryClient = useQueryClient();
+  const { data: sectionTitleOverrides = {} } = useQuery<Record<string, string>>({
+    queryKey: ['budget-section-titles', budgetId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('budget_section_titles')
+        .select('budget_template_id, title')
+        .eq('budget_id', budgetId);
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      (data || []).forEach((row: any) => {
+        map[row.budget_template_id ? `tpl:${row.budget_template_id}` : '__custom__'] = row.title;
+      });
+      return map;
+    },
+    enabled: !!budgetId,
+  });
+
   // Prodotti collegati ai modelli referenziati (solo visualizzazione badge)
   const { data: templateLinkedProducts = [] } = useQuery({
     queryKey: ['budget-template-linked-products', referencedTemplateIds],
@@ -379,6 +398,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
   type ItemGroup = {
     key: string;
     label: string;
+    defaultLabel: string;
     discipline: string | null;
     items: BudgetItem[];
     totalHours: number;
@@ -412,8 +432,11 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
         label = 'Attività personalizzate';
       }
 
+      const originalLabel = label;
+      label = sectionTitleOverrides[key] ?? label;
+
       if (!map.has(key)) {
-        map.set(key, { key, label, discipline, items: [], totalHours: 0, totalCost: 0, linkedProducts });
+        map.set(key, { key, label, defaultLabel: originalLabel, discipline, items: [], totalHours: 0, totalCost: 0, linkedProducts });
         order.push(key);
       }
       const group = map.get(key)!;
