@@ -1323,6 +1323,10 @@ const SortableRow = ({ item, onEdit, onDelete, onDuplicate, onMoveToSection, sec
 interface SortableGroupHeaderProps {
   groupKey: string;
   label: string;
+  defaultLabel: string;
+  isOverridden: boolean;
+  canRename: boolean;
+  onRename: (title: string | null) => void | Promise<void>;
   discipline: string | null;
   linkedProducts?: { id: string; name: string; code: string }[];
   itemsCount: number;
@@ -1339,6 +1343,10 @@ interface SortableGroupHeaderProps {
 const SortableGroupHeader = ({
   groupKey,
   label,
+  defaultLabel,
+  isOverridden,
+  canRename,
+  onRename,
   discipline,
   linkedProducts = [],
   itemsCount,
@@ -1351,6 +1359,23 @@ const SortableGroupHeader = ({
   canEdit,
   colSpan,
 }: SortableGroupHeaderProps) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(label);
+
+  const startEdit = () => {
+    setDraft(label);
+    setEditing(true);
+  };
+  const commitEdit = async () => {
+    const t = draft.trim();
+    setEditing(false);
+    if (t === '' || t === label) return;
+    await onRename(t);
+  };
+  const resetTitle = async () => {
+    setEditing(false);
+    await onRename(null);
+  };
   const {
     attributes,
     listeners,
@@ -1391,7 +1416,75 @@ const SortableGroupHeader = ({
           ) : (
             <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
           )}
-          <span className="font-semibold text-sm">{label}</span>
+          {editing ? (
+            <div
+              className="flex items-center gap-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Input
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitEdit();
+                  if (e.key === 'Escape') setEditing(false);
+                }}
+                className="h-7 w-56 text-sm"
+                placeholder={defaultLabel}
+              />
+              {isOverridden && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs text-muted-foreground"
+                  onClick={resetTitle}
+                  title={`Ripristina "${defaultLabel}"`}
+                >
+                  Ripristina
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={commitEdit}
+                title="Salva titolo"
+              >
+                <Check className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => setEditing(false)}
+                title="Annulla"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <span className="font-semibold text-sm">{label}</span>
+              {canEdit && canRename && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startEdit();
+                  }}
+                  title={
+                    isOverridden
+                      ? `Titolo personalizzato (originale: "${defaultLabel}")`
+                      : 'Rinomina sezione'
+                  }
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </>
+          )}
           {discipline && (
             <Badge
               variant="outline"
