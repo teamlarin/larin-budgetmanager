@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { BudgetItem } from '@/types/budget';
+import { BudgetItem, externalCostPrice } from '@/types/budget';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -106,7 +106,12 @@ export const BudgetItemForm = ({
     linkedProductId: '',
     productCode: '',
     productDescription: '',
+    isExternalCost: false,
+    externalCostBase: 0,
+    externalCostMarkup: 30,
+    supplierId: '',
   });
+  const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     if (isOpen) {
@@ -129,6 +134,10 @@ export const BudgetItemForm = ({
         linkedProductId: initialData.linkedProductId || '',
         productCode: '',
         productDescription: '',
+        isExternalCost: initialData.isExternalCost || false,
+        externalCostBase: Number(initialData.externalCostBase ?? 0),
+        externalCostMarkup: Number(initialData.externalCostMarkup ?? 30),
+        supplierId: initialData.supplierId || '',
       });
       
       // If editing, load suggested users for the assigned level
@@ -179,6 +188,10 @@ export const BudgetItemForm = ({
         linkedProductId: '',
         productCode: '',
         productDescription: '',
+        isExternalCost: false,
+        externalCostBase: 0,
+        externalCostMarkup: 30,
+        supplierId: '',
       });
       setSelectedTemplate(null);
       setSelectedTemplateActivities([]);
@@ -218,6 +231,9 @@ export const BudgetItemForm = ({
 
       if (categoriesError) throw categoriesError;
       setCategories(categoriesData || []);
+
+      const { data: suppliersData } = await supabase.from('suppliers').select('id, name').order('name');
+      setSuppliers(suppliersData || []);
 
       // Fetch products
       await fetchProducts();
@@ -369,6 +385,27 @@ export const BudgetItemForm = ({
       return;
     }
     
+    if (formData.isExternalCost) {
+      const price = externalCostPrice(formData.externalCostBase, formData.externalCostMarkup);
+      const supplier = suppliers.find(s => s.id === formData.supplierId);
+      const payload = {
+        ...formData,
+        assigneeId: '',
+        assigneeName: supplier?.name || '',
+        hourlyRate: formData.externalCostBase,
+        hoursWorked: 0,
+        totalCost: price,
+        isProduct: false,
+        isCustomActivity: true,
+        productId: '',
+        supplierId: formData.supplierId || null,
+      };
+      if (isEditing && initialData) onSubmit({ ...initialData, ...payload });
+      else onSubmit({ ...payload, sourceTemplateId: presetSourceTemplateId || null });
+      onClose();
+      return;
+    }
+
     const totalCost = formData.hourlyRate * formData.hoursWorked;
     
     if (isEditing && initialData) {
@@ -388,11 +425,68 @@ export const BudgetItemForm = ({
   };
 
 
-  const isValid = (selectedTemplateActivities.length > 0 && activeTab === 'predefined') ||
+  const isValid = formData.isExternalCost
+    ? !!formData.activityName.trim() && !!formData.category && formData.externalCostBase > 0 && formData.externalCostMarkup >= 0
+    : (selectedTemplateActivities.length > 0 && activeTab === 'predefined') ||
     (formData.activityName.trim() &&
     (formData.isProduct || (formData.assigneeId && formData.hourlyRate > 0)) &&
     // Le attività personalizzate (senza modello) richiedono un prodotto collegato
     (isEditing || activeTab !== 'custom' || !!formData.linkedProductId));
+
+  const externalPrice = externalCostPrice(formData.externalCostBase, formData.externalCostMarkup);
+  const externalFieldsUi = (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="extName">Nome voce *</Label>
+        <Input id="extName" value={formData.activityName}
+          onChange={(e) => setFormData(prev => ({ ...prev, activityName: e.target.value }))}
+          placeholder="Es. Produzione video, stampa, licenze..." />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Categoria *</Label>
+          <Select value={formData.category} onValueChange={(value: string) => setFormData(prev => ({ ...prev, category: value }))}>
+            <SelectTrigger><SelectValue placeholder="Seleziona" /></SelectTrigger>
+            <SelectContent>
+              {filteredCategories.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Fornitore</Label>
+          <Select value={formData.supplierId || '__none__'}
+            onValueChange={(v) => setFormData(prev => ({ ...prev, supplierId: v === '__none__' ? '' : v }))}>
+            <SelectTrigger><SelectValue placeholder="Nessuno" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Nessuno</SelectItem>
+              {suppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="extBase">Costo d'acquisto (€) *</Label>
+          <Input id="extBase" type="number" min="0" step="0.01" value={formData.externalCostBase || ''}
+            onChange={(e) => setFormData(prev => ({ ...prev, externalCostBase: parseFloat(e.target.value) || 0 }))} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="extMarkup">Ricarico (%)</Label>
+          <Input id="extMarkup" type="number" min="0" step="1" value={formData.externalCostMarkup}
+            onChange={(e) => setFormData(prev => ({ ...prev, externalCostMarkup: e.target.value === '' ? 0 : parseFloat(e.target.value) || 0 }))} />
+        </div>
+      </div>
+      <div className="bg-muted/50 rounded-lg p-4 border space-y-1">
+        <div className="flex justify-between items-center">
+          <span className="font-medium text-foreground">Prezzo al cliente:</span>
+          <span className="text-xl font-bold text-primary">€{externalPrice.toFixed(2)}</span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Margine €{(externalPrice - formData.externalCostBase).toFixed(2)} · nessuna ora. All'avvio del progetto il costo d'acquisto viene registrato tra i costi esterni.
+        </p>
+      </div>
+    </div>
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -415,11 +509,16 @@ export const BudgetItemForm = ({
           {!isEditing && (
             <Tabs value={activeTab} onValueChange={(value) => {
               setActiveTab(value);
-              if (value === 'custom') {
+              if (value === 'external') {
+                setFormData(prev => ({ ...prev, isExternalCost: true, isCustomActivity: true, isProduct: false }));
+                setSelectedTemplateActivities([]);
+                setSelectedProduct(null);
+              } else if (value === 'custom') {
                 setFormData(prev => ({
                   ...prev,
                   isCustomActivity: true,
                   isProduct: false,
+                  isExternalCost: false,
                 }));
                 setSelectedTemplateActivities([]);
                 setSelectedProduct(null);
@@ -429,13 +528,15 @@ export const BudgetItemForm = ({
                   ...prev,
                   isCustomActivity: false,
                   isProduct: false,
+                  isExternalCost: false,
                 }));
                 setSelectedProduct(null);
               }
             }} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="predefined">Modelli di budget</TabsTrigger>
                 <TabsTrigger value="custom">Attività Personalizzata</TabsTrigger>
+                <TabsTrigger value="external">Costo esterno</TabsTrigger>
               </TabsList>
               
               <TabsContent value="predefined" className="space-y-4">
@@ -759,12 +860,15 @@ export const BudgetItemForm = ({
                   </p>
                 </div>
               </TabsContent>
+              <TabsContent value="external" className="space-y-4">{externalFieldsUi}</TabsContent>
             </Tabs>
           )}
 
+          {isEditing && formData.isExternalCost && externalFieldsUi}
+
           {(isEditing || activeTab === 'custom' || selectedTemplateActivities.length > 0) && (
             <>
-              {!formData.isCustomActivity && !isEditing && !formData.isProduct && (
+              {!formData.isCustomActivity && !isEditing && !formData.isProduct && !formData.isExternalCost && (
                 <div className="bg-muted/50 rounded-lg p-4 border">
                   <div className="flex justify-between items-center">
                     <span className="font-medium text-foreground">Costo Totale Previsto:</span>
@@ -859,7 +963,7 @@ export const BudgetItemForm = ({
                 </>
               )}
 
-              {isEditing && !formData.isProduct && (
+              {isEditing && !formData.isProduct && !formData.isExternalCost && (
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="activityName">Nome attività</Label>
