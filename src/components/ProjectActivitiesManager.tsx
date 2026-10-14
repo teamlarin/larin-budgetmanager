@@ -106,6 +106,7 @@ export const ProjectActivitiesManager = ({
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editedDescription, setEditedDescription] = useState('');
   const [canEditDescription, setCanEditDescription] = useState(false);
+  const [isExternalUser, setIsExternalUser] = useState(false);
 
   // Check if current user can assign activities (admin, team_leader, coordinator, or project leader)
   useEffect(() => {
@@ -126,7 +127,9 @@ export const ProjectActivitiesManager = ({
       // Check if user is admin, team_leader, account, or coordinator
       const hasAssignRole = userRoles.includes('admin') || 
                            userRoles.includes('team_leader') || 
-                           userRoles.includes('coordinator');
+                           userRoles.includes('coordinator') ||
+                           userRoles.includes('external');
+      setIsExternalUser(userRoles.includes('external'));
       
       // Check if user can edit description (admin, account, team_leader)
       const hasDescriptionEditRole = userRoles.includes('admin') || 
@@ -264,20 +267,28 @@ export const ProjectActivitiesManager = ({
     data: teamMembers = [],
     isLoading: membersLoading
   } = useQuery<TeamMember[]>({
-    queryKey: ['project-team-members', projectId, projectDetails?.project_leader_id],
+    queryKey: ['project-team-members', projectId, projectDetails?.project_leader_id, isExternalUser],
     queryFn: async () => {
-      const {
-        data: memberIds,
-        error: memberError
-      } = await supabase.from('project_members').select('user_id').eq('project_id', projectId);
-      if (memberError) throw memberError;
-      
-      // Collect all user IDs including project leader
-      const userIds = new Set<string>(memberIds?.map(m => m.user_id) || []);
-      
-      // Add project leader if exists
-      if (projectDetails?.project_leader_id) {
-        userIds.add(projectDetails.project_leader_id);
+      let userIds: Set<string>;
+      if (isExternalUser) {
+        // External users: only themselves + admin-selected visible users
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: visible } = await supabase
+          .from('external_visible_users')
+          .select('visible_user_id')
+          .eq('external_user_id', user?.id || '');
+        userIds = new Set<string>((visible || []).map(v => v.visible_user_id));
+        if (user?.id) userIds.add(user.id);
+      } else {
+        const {
+          data: memberIds,
+          error: memberError
+        } = await supabase.from('project_members').select('user_id').eq('project_id', projectId);
+        if (memberError) throw memberError;
+        userIds = new Set<string>(memberIds?.map(m => m.user_id) || []);
+        if (projectDetails?.project_leader_id) {
+          userIds.add(projectDetails.project_leader_id);
+        }
       }
       
       if (userIds.size === 0) return [];
