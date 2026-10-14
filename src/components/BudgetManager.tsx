@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BudgetItem, Category, BudgetSummary } from '@/types/budget';
+import { BudgetItem, Category, BudgetSummary, budgetItemTotal } from '@/types/budget';
 import { assignees } from '@/data/assignees';
 import { getRolePermissions } from '@/lib/permissions';
 import { formatHours } from '@/lib/utils';
@@ -127,6 +127,17 @@ const transformDbToBudgetItem = (dbItem: any): BudgetItem => ({
   linkedProductId: dbItem.linked_product_id || null,
   displayOrder: dbItem.display_order,
   sourceTemplateId: dbItem.source_template_id || null,
+  isExternalCost: dbItem.is_external_cost || false,
+  externalCostBase: dbItem.external_cost_base ?? null,
+  externalCostMarkup: dbItem.external_cost_markup ?? null,
+  supplierId: dbItem.supplier_id || null,
+});
+
+const externalFields = (i: Partial<BudgetItem>) => ({
+  is_external_cost: i.isExternalCost || false,
+  external_cost_base: i.isExternalCost ? (i.externalCostBase ?? 0) : null,
+  external_cost_markup: i.isExternalCost ? (i.externalCostMarkup ?? 30) : null,
+  supplier_id: i.isExternalCost ? (i.supplierId || null) : null,
 });
 
 export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetManagerProps) => {
@@ -462,6 +473,12 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
 
     budgetItems.forEach(item => {
       // Apply margin to activities only
+      if (item.isExternalCost) {
+        // Costo esterno: il ricarico è già nel totale, nessuna ora
+        summary.totalCost += item.totalCost;
+        productsTotal += item.totalCost;
+        return;
+      }
       const itemCost = item.isProduct 
         ? item.totalCost 
         : item.totalCost * (1 + margin / 100);
@@ -498,14 +515,14 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
       // Fetch all budget items for this budget to recalculate totals
       const { data: items, error: fetchError } = await supabase
         .from('budget_items')
-        .select('total_cost, hours_worked, is_product')
+        .select('total_cost, hours_worked, is_product, is_external_cost')
         .or(`budget_id.eq.${budgetId},project_id.eq.${budgetId}`);
 
       if (fetchError) throw fetchError;
 
       const totalBudget = items?.reduce((sum, item) => sum + item.total_cost, 0) || 0;
       // Exclude products from total hours
-      const totalHours = items?.reduce((sum, item) => sum + (item.is_product ? 0 : item.hours_worked), 0) || 0;
+      const totalHours = items?.reduce((sum, item) => sum + (item.is_product || item.is_external_cost ? 0 : item.hours_worked), 0) || 0;
 
       const { error } = await supabase
         .from('budgets')
@@ -541,8 +558,9 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
         : 1;
       
       const insertData = itemsToAdd.map((newItem, index) => {
-        const totalCost = newItem.hourlyRate * newItem.hoursWorked;
+        const totalCost = budgetItemTotal(newItem);
         return {
+          ...externalFields(newItem),
           budget_id: budgetId,
           category: newItem.category,
           activity_name: newItem.activityName,
@@ -626,8 +644,8 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
 
   const handleUpdateItem = async (updatedItem: BudgetItem) => {
     try {
-      const totalCost = updatedItem.hourlyRate * updatedItem.hoursWorked;
-      
+      const totalCost = budgetItemTotal(updatedItem);
+
       const { error } = await supabase
         .from('budget_items')
         .update({
@@ -643,6 +661,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
           product_id: updatedItem.productId || null,
           linked_product_id: updatedItem.linkedProductId || null,
           source_template_id: updatedItem.sourceTemplateId || null,
+          ...externalFields(updatedItem),
         })
         .eq('id', updatedItem.id);
 
@@ -778,6 +797,7 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
             is_product: item.isProduct || false,
             product_id: item.productId || null,
             linked_product_id: item.linkedProductId || null,
+            ...externalFields(item),
             display_order: nextOrder,
           }
         ]);
@@ -1172,16 +1192,18 @@ const SortableRow = ({ item, onEdit, onDelete, onDuplicate, onMoveToSection, sec
       </TableCell>
       <TableCell className="font-medium">{item.activityName}</TableCell>
       <TableCell>
-        <Badge variant={item.isProduct ? "secondary" : "outline"}>
-          {item.isProduct ? 'Prodotto' : 'Attività'}
+        <Badge variant={item.isProduct || item.isExternalCost ? "secondary" : "outline"}>
+          {item.isExternalCost ? 'Costo esterno' : item.isProduct ? 'Prodotto' : 'Attività'}
         </Badge>
       </TableCell>
-      <TableCell>{item.assigneeName || '-'}</TableCell>
+      <TableCell>{item.assigneeName || (item.isExternalCost ? 'Esterno' : '-')}</TableCell>
       <TableCell className="text-right">
-        {item.isProduct ? `${(item.hourlyRate ?? 0).toFixed(2)} €` : `${(item.hourlyRate ?? 0).toFixed(2)} €/h`}
+        {item.isExternalCost
+          ? <span>{(item.externalCostBase ?? 0).toFixed(2)} € <span className="text-xs text-muted-foreground">(+{item.externalCostMarkup ?? 30}%)</span></span>
+          : item.isProduct ? `${(item.hourlyRate ?? 0).toFixed(2)} €` : `${(item.hourlyRate ?? 0).toFixed(2)} €/h`}
       </TableCell>
       <TableCell className="text-right">
-        {item.isProduct ? (item.hoursWorked ?? 0).toFixed(0) : formatHours(item.hoursWorked ?? 0)}
+        {item.isExternalCost ? '-' : item.isProduct ? (item.hoursWorked ?? 0).toFixed(0) : formatHours(item.hoursWorked ?? 0)}
       </TableCell>
       <TableCell className="text-right font-semibold">{(item.totalCost ?? 0).toFixed(2)} €</TableCell>
       {canEdit && (

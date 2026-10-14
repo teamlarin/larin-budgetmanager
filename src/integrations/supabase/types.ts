@@ -316,10 +316,13 @@ export type Database = {
           created_from: string | null
           display_order: number
           duration_days: number | null
+          external_cost_base: number | null
+          external_cost_markup: number | null
           hourly_rate: number
           hours_worked: number
           id: string
           is_custom_activity: boolean | null
+          is_external_cost: boolean
           is_product: boolean | null
           linked_product_id: string | null
           payment_terms: string | null
@@ -327,6 +330,7 @@ export type Database = {
           project_id: string | null
           source_template_id: string | null
           start_day_offset: number | null
+          supplier_id: string | null
           total_cost: number
           updated_at: string
           vat_rate: number
@@ -342,10 +346,13 @@ export type Database = {
           created_from?: string | null
           display_order: number
           duration_days?: number | null
+          external_cost_base?: number | null
+          external_cost_markup?: number | null
           hourly_rate: number
           hours_worked: number
           id?: string
           is_custom_activity?: boolean | null
+          is_external_cost?: boolean
           is_product?: boolean | null
           linked_product_id?: string | null
           payment_terms?: string | null
@@ -353,6 +360,7 @@ export type Database = {
           project_id?: string | null
           source_template_id?: string | null
           start_day_offset?: number | null
+          supplier_id?: string | null
           total_cost: number
           updated_at?: string
           vat_rate?: number
@@ -368,10 +376,13 @@ export type Database = {
           created_from?: string | null
           display_order?: number
           duration_days?: number | null
+          external_cost_base?: number | null
+          external_cost_markup?: number | null
           hourly_rate?: number
           hours_worked?: number
           id?: string
           is_custom_activity?: boolean | null
+          is_external_cost?: boolean
           is_product?: boolean | null
           linked_product_id?: string | null
           payment_terms?: string | null
@@ -379,6 +390,7 @@ export type Database = {
           project_id?: string | null
           source_template_id?: string | null
           start_day_offset?: number | null
+          supplier_id?: string | null
           total_cost?: number
           updated_at?: string
           vat_rate?: number
@@ -424,6 +436,13 @@ export type Database = {
             columns: ["source_template_id"]
             isOneToOne: false
             referencedRelation: "budget_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_items_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -2986,6 +3005,7 @@ export type Database = {
           id: string
           name: string
           project_id: string
+          source_budget_item_id: string | null
           supplier_id: string | null
           updated_at: string
           user_id: string
@@ -2997,6 +3017,7 @@ export type Database = {
           id?: string
           name: string
           project_id: string
+          source_budget_item_id?: string | null
           supplier_id?: string | null
           updated_at?: string
           user_id: string
@@ -3008,6 +3029,7 @@ export type Database = {
           id?: string
           name?: string
           project_id?: string
+          source_budget_item_id?: string | null
           supplier_id?: string | null
           updated_at?: string
           user_id?: string
