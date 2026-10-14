@@ -468,7 +468,8 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
         options.push({ templateId: g.key.slice(4), label: g.label });
       }
     });
-    options.push({ templateId: null, label: 'Attività personalizzate' });
+    const customGroup = groupedItems.find((g) => g.key === '__custom__');
+    options.push({ templateId: null, label: customGroup ? customGroup.label : 'Attività personalizzate' });
     return options;
   }, [groupedItems]);
 
