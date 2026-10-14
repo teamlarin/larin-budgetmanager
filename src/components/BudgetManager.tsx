@@ -1154,6 +1154,10 @@ export const BudgetManager = ({ projectId, budgetId: explicitBudgetId }: BudgetM
           billingType={budgetData?.billing_type}
           presetSourceTemplateId={addToGroup?.templateId ?? null}
           presetGroupLabel={addToGroup?.label ?? null}
+          sectionHasLinkedProduct={
+            !!addToGroup?.templateId &&
+            (groupedItems.find((g) => g.key === addToGroup.key)?.linkedProducts.length ?? 0) > 0
+          }
         />
 
         {editingItem && (
