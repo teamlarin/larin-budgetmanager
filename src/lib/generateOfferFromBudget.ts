@@ -73,6 +73,14 @@ export const generateOfferFromBudget = async (
         (templateProductIdsByTemplate[link.budget_template_id] =
           templateProductIdsByTemplate[link.budget_template_id] || []).push(link.product_id);
       });
+      // Override per questo budget del prodotto collegato alla sezione
+      const { data: overrides } = await supabase
+        .from('budget_section_products' as any)
+        .select('budget_template_id, product_id')
+        .eq('budget_id', budgetId);
+      ((overrides || []) as any[]).forEach((o) => {
+        templateProductIdsByTemplate[o.budget_template_id] = o.product_id ? [o.product_id] : [];
+      });
     }
 
     // Ripartizione del valore delle attività: per modello verso i suoi prodotti
