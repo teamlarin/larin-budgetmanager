@@ -35,6 +35,7 @@ interface PerformanceObjective {
   title: string;
   description: string | null;
   bonus_percentage: number;
+  completion_percentage: number | null;
   sort_order: number;
 }
 
@@ -225,6 +226,8 @@ export const PerformanceReviewTab = ({ userId }: PerformanceReviewTabProps) => {
                           <TableHead>Obiettivo</TableHead>
                           <TableHead>Descrizione / Risultati attesi</TableHead>
                           <TableHead className="text-right">% Premio</TableHead>
+                          <TableHead className="text-right">% Completamento</TableHead>
+                          <TableHead className="text-right">Premio maturato</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -236,12 +239,18 @@ export const PerformanceReviewTab = ({ userId }: PerformanceReviewTabProps) => {
                             <TableCell className="text-right">
                               <Badge variant="outline">{obj.bonus_percentage}%</Badge>
                             </TableCell>
+                            <TableCell className="text-right">{Number(obj.completion_percentage || 0)}%</TableCell>
+                            <TableCell className="text-right font-medium">{((Number(obj.bonus_percentage || 0) * Number(obj.completion_percentage || 0)) / 100).toLocaleString('it-IT', { maximumFractionDigits: 2 })}%</TableCell>
                           </TableRow>
                         ))}
                         <TableRow>
                           <TableCell colSpan={3} className="font-semibold text-right">Totale</TableCell>
                           <TableCell className="text-right">
                             <Badge>{objectives.reduce((sum, o) => sum + (o.bonus_percentage || 0), 0)}%</Badge>
+                          </TableCell>
+                          <TableCell />
+                          <TableCell className="text-right">
+                            <Badge>{objectives.reduce((a, o) => a + (Number(o.bonus_percentage || 0) * Number(o.completion_percentage || 0)) / 100, 0).toLocaleString('it-IT', { maximumFractionDigits: 2 })}%</Badge>
                           </TableCell>
                         </TableRow>
                       </TableBody>

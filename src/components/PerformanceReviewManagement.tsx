@@ -56,6 +56,7 @@ interface Objective {
   title: string;
   description: string | null;
   bonus_percentage: number;
+  completion_percentage: number | null;
   sort_order: number;
 }
 
@@ -186,7 +187,7 @@ export const PerformanceReviewManagement = () => {
   const [objectives, setObjectives] = useState<Objective[]>([]);
   const [quarterlyNotes, setQuarterlyNotes] = useState<QNote[]>([]);
   const [objDialogOpen, setObjDialogOpen] = useState(false);
-  const [objForm, setObjForm] = useState({ title: '', description: '', bonus_percentage: 0, sort_order: 0 });
+  const [objForm, setObjForm] = useState({ title: '', description: '', bonus_percentage: 0, completion_percentage: 0, sort_order: 0 });
   const [editingObj, setEditingObj] = useState<Objective | null>(null);
   const [noteForm, setNoteForm] = useState<Record<string, string>>({});
 
@@ -542,6 +543,7 @@ export const PerformanceReviewManagement = () => {
         title: objForm.title,
         description: objForm.description || null,
         bonus_percentage: objForm.bonus_percentage,
+        completion_percentage: Math.min(100, Math.max(0, Number(objForm.completion_percentage) || 0)),
         sort_order: objForm.sort_order,
       };
       if (editingObj) {
@@ -551,11 +553,20 @@ export const PerformanceReviewManagement = () => {
       }
       setObjDialogOpen(false);
       setEditingObj(null);
-      setObjForm({ title: '', description: '', bonus_percentage: 0, sort_order: 0 });
+      setObjForm({ title: '', description: '', bonus_percentage: 0, completion_percentage: 0, sort_order: 0 });
       loadDetails(selectedReview.id);
     } catch (err: any) {
       toast({ title: 'Errore', description: err.message, variant: 'destructive' });
     }
+  };
+
+  const handleQuickCompletion = async (obj: Objective, raw: string) => {
+    if (!selectedReview) return;
+    const v = Math.min(100, Math.max(0, Number(raw) || 0));
+    if (v === Number(obj.completion_percentage || 0)) return;
+    const { error } = await supabase.from('performance_objectives').update({ completion_percentage: v } as any).eq('id', obj.id);
+    if (error) { toast({ title: 'Errore', description: error.message, variant: 'destructive' }); return; }
+    loadDetails(selectedReview.id);
   };
 
   const handleDeleteObjective = async (id: string) => {
@@ -884,7 +895,7 @@ export const PerformanceReviewManagement = () => {
                 <div className="flex justify-end">
                   <Button size="sm" onClick={() => {
                     setEditingObj(null);
-                    setObjForm({ title: '', description: '', bonus_percentage: 0, sort_order: objectives.length });
+                    setObjForm({ title: '', description: '', bonus_percentage: 0, completion_percentage: 0, sort_order: objectives.length });
                     setObjDialogOpen(true);
                   }}>
                     <Plus className="h-4 w-4 mr-1" />
@@ -900,6 +911,8 @@ export const PerformanceReviewManagement = () => {
                         <TableHead>Obiettivo</TableHead>
                         <TableHead>Descrizione</TableHead>
                         <TableHead className="text-right">% Premio</TableHead>
+                        <TableHead className="text-right">% Completamento</TableHead>
+                        <TableHead className="text-right">Premio maturato</TableHead>
                         <TableHead className="text-right">Azioni</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -911,10 +924,21 @@ export const PerformanceReviewManagement = () => {
                           <TableCell className="text-sm text-muted-foreground whitespace-pre-wrap">{obj.description || '-'}</TableCell>
                           <TableCell className="text-right"><Badge variant="outline">{obj.bonus_percentage}%</Badge></TableCell>
                           <TableCell className="text-right">
+                            <Input
+                              type="number" min={0} max={100} className="h-8 w-20 ml-auto text-right"
+                              defaultValue={Number(obj.completion_percentage || 0)}
+                              key={`${obj.id}-${obj.completion_percentage}`}
+                              onBlur={(e) => handleQuickCompletion(obj, e.target.value)}
+                            />
+                          </TableCell>
+                          <TableCell className="text-right text-sm font-medium">
+                            {((Number(obj.bonus_percentage || 0) * Number(obj.completion_percentage || 0)) / 100).toLocaleString('it-IT', { maximumFractionDigits: 2 })}%
+                          </TableCell>
+                          <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
                               <Button size="icon" variant="ghost" onClick={() => {
                                 setEditingObj(obj);
-                                setObjForm({ title: obj.title, description: obj.description || '', bonus_percentage: obj.bonus_percentage, sort_order: obj.sort_order });
+                                setObjForm({ title: obj.title, description: obj.description || '', bonus_percentage: obj.bonus_percentage, completion_percentage: Number(obj.completion_percentage || 0), sort_order: obj.sort_order });
                                 setObjDialogOpen(true);
                               }}>
                                 <Pencil className="h-4 w-4" />
@@ -926,6 +950,13 @@ export const PerformanceReviewManagement = () => {
                           </TableCell>
                         </TableRow>
                       ))}
+                      <TableRow>
+                        <TableCell colSpan={3} className="font-semibold text-right">Totale</TableCell>
+                        <TableCell className="text-right"><Badge>{objectives.reduce((a, o) => a + Number(o.bonus_percentage || 0), 0)}%</Badge></TableCell>
+                        <TableCell />
+                        <TableCell className="text-right"><Badge>{objectives.reduce((a, o) => a + (Number(o.bonus_percentage || 0) * Number(o.completion_percentage || 0)) / 100, 0).toLocaleString('it-IT', { maximumFractionDigits: 2 })}%</Badge></TableCell>
+                        <TableCell />
+                      </TableRow>
                     </TableBody>
                   </Table>
                 ) : (
@@ -1113,6 +1144,10 @@ export const PerformanceReviewManagement = () => {
               <div className="space-y-2">
                 <Label>% Premio</Label>
                 <Input type="number" value={objForm.bonus_percentage} onChange={e => setObjForm({ ...objForm, bonus_percentage: Number(e.target.value) })} />
+              </div>
+              <div className="space-y-2">
+                <Label>% Completamento</Label>
+                <Input type="number" min={0} max={100} value={objForm.completion_percentage} onChange={e => setObjForm({ ...objForm, completion_percentage: Number(e.target.value) })} />
               </div>
               <div className="space-y-2">
                 <Label>Ordine</Label>
