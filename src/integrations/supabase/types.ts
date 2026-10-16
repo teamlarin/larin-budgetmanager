@@ -2611,6 +2611,7 @@ export type Database = {
       performance_objectives: {
         Row: {
           bonus_percentage: number | null
+          completion_percentage: number
           created_at: string
           description: string | null
           id: string
@@ -2621,6 +2622,7 @@ export type Database = {
         }
         Insert: {
           bonus_percentage?: number | null
+          completion_percentage?: number
           created_at?: string
           description?: string | null
           id?: string
@@ -2631,6 +2633,7 @@ export type Database = {
         }
         Update: {
           bonus_percentage?: number | null
+          completion_percentage?: number
           created_at?: string
           description?: string | null
           id?: string
