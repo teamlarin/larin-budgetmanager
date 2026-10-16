@@ -83,9 +83,11 @@ const DueDate = ({ date, done }: { date: string; done: boolean }) => {
 interface Props {
   projectId: string;
   readOnly?: boolean;
+  /** Nasconde Estrai da Meet / Importa workflow (es. utenti esterni) */
+  hideInternalImports?: boolean;
 }
 
-export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
+export const ProjectTasksPanel = ({ projectId, readOnly = false, hideInternalImports = false }: Props) => {
   const {
     tasks, isLoading, createTask, updateTask, deleteTask, bulkUpdateTasks, bulkDeleteTasks,
   } = useProjectTasks(projectId);
@@ -272,12 +274,16 @@ export const ProjectTasksPanel = ({ projectId, readOnly = false }: Props) => {
             </div>
             {!readOnly && (
               <>
-                <Button size="sm" variant="outline" onClick={() => setMeetOpen(true)}>
-                  <Sparkles className="h-4 w-4 mr-1" /> Estrai da Meet
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
-                  <Download className="h-4 w-4 mr-1" /> Importa workflow
-                </Button>
+                {!hideInternalImports && (
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => setMeetOpen(true)}>
+                      <Sparkles className="h-4 w-4 mr-1" /> Estrai da Meet
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
+                      <Download className="h-4 w-4 mr-1" /> Importa workflow
+                    </Button>
+                  </>
+                )}
                 <Button size="sm" onClick={() => { setEditing(null); setSheetOpen(true); }}>
                   <Plus className="h-4 w-4 mr-1" /> Nuova task
                 </Button>

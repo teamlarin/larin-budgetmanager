@@ -1244,7 +1244,7 @@ const ProjectCanvas = () => {
         </TabsContent>
 
         <TabsContent value="tasks" className="space-y-4">
-          <ProjectTasksPanel projectId={projectId!} readOnly={isExternal} />
+          <ProjectTasksPanel projectId={projectId!} hideInternalImports={isExternal} />
         </TabsContent>
 
         {!isExternal && (
