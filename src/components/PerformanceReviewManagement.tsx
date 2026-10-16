@@ -33,6 +33,8 @@ interface Review {
   compilation_period: string | null;
   strengths: string | null;
   improvement_areas: string | null;
+  mbo_target_amount?: number | null;
+  mbo_paid_amount?: number | null;
 }
 
 interface PerformanceProfile {
@@ -73,6 +75,8 @@ const emptyReview = {
   compilation_period: '',
   strengths: '',
   improvement_areas: '',
+  mbo_target_amount: '' as string,
+  mbo_paid_amount: '' as string,
 };
 
 const emptyProfile = {
@@ -380,6 +384,8 @@ export const PerformanceReviewManagement = () => {
       compilation_period: r.compilation_period || '',
       strengths: r.strengths || '',
       improvement_areas: r.improvement_areas || '',
+      mbo_target_amount: r.mbo_target_amount != null ? String(r.mbo_target_amount) : '',
+      mbo_paid_amount: r.mbo_paid_amount != null ? String(r.mbo_paid_amount) : '',
     });
     setDialogOpen(true);
   };
@@ -393,6 +399,8 @@ export const PerformanceReviewManagement = () => {
         compilation_period: form.compilation_period || null,
         strengths: form.strengths || null,
         improvement_areas: form.improvement_areas || null,
+        mbo_target_amount: form.mbo_target_amount === '' ? null : Number(String(form.mbo_target_amount).replace(',', '.')),
+        mbo_paid_amount: form.mbo_paid_amount === '' ? null : Number(String(form.mbo_paid_amount).replace(',', '.')),
       };
 
       if (editingReview) {
