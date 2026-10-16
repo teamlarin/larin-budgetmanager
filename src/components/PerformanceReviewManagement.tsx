@@ -830,6 +830,8 @@ export const PerformanceReviewManagement = () => {
                   <TableRow>
                     <TableHead>Anno</TableHead>
                     <TableHead>Periodo</TableHead>
+                    <TableHead className="text-right">MBO previsto</TableHead>
+                    <TableHead className="text-right">MBO erogato</TableHead>
                     <TableHead className="text-right">Azioni</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -842,6 +844,8 @@ export const PerformanceReviewManagement = () => {
                     >
                       <TableCell className="font-medium">{r.year}</TableCell>
                       <TableCell><Badge variant="secondary">{r.compilation_period || '-'}</Badge></TableCell>
+                      <TableCell className="text-right text-sm">{r.mbo_target_amount != null ? fmtEur(Number(r.mbo_target_amount)) : '-'}</TableCell>
+                      <TableCell className="text-right text-sm">{r.mbo_paid_amount != null ? fmtEur(Number(r.mbo_paid_amount)) : '-'}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(r); }}>
@@ -970,6 +974,19 @@ export const PerformanceReviewManagement = () => {
                 ) : (
                   <p className="text-sm text-muted-foreground">Nessun obiettivo definito.</p>
                 )}
+                {(() => {
+                  const pct = objectives.reduce((a, o) => a + (Number(o.bonus_percentage || 0) * Number(o.completion_percentage || 0)) / 100, 0);
+                  const target = selectedReview.mbo_target_amount;
+                  const theoretical = target != null ? (Number(target) * pct) / 100 : null;
+                  return (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 rounded-md border p-3 text-sm">
+                      <div><span className="text-muted-foreground">MBO previsto</span><p className="font-medium">{target != null ? fmtEur(Number(target)) : '-'}</p></div>
+                      <div><span className="text-muted-foreground">% raggiunta</span><p className="font-medium">{pct.toLocaleString('it-IT', { maximumFractionDigits: 2 })}%</p></div>
+                      <div><span className="text-muted-foreground">MBO maturato (teorico)</span><p className="font-medium">{theoretical != null ? fmtEur(theoretical) : '-'}</p></div>
+                      <div><span className="text-muted-foreground">MBO erogato</span><p className="font-medium">{selectedReview.mbo_paid_amount != null ? fmtEur(Number(selectedReview.mbo_paid_amount)) : '-'}</p></div>
+                    </div>
+                  );
+                })()}
               </TabsContent>
 
               <TabsContent value="notes" className="space-y-4 mt-4">
@@ -1016,6 +1033,19 @@ export const PerformanceReviewManagement = () => {
             </div>
             <div className="space-y-2">
               <Label>Aree di miglioramento</Label>
+              <Textarea value={form.improvement_areas} onChange={e => setForm({ ...form, improvement_areas: e.target.value })} rows={5} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>MBO previsto (€)</Label>
+                <Input type="number" min={0} step="0.01" value={form.mbo_target_amount} onChange={e => setForm({ ...form, mbo_target_amount: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>MBO erogato (€)</Label>
+                <Input type="number" min={0} step="0.01" value={form.mbo_paid_amount} onChange={e => setForm({ ...form, mbo_paid_amount: e.target.value })} />
+              </div>
+            </div>
+            <div className="hidden">
               <Textarea value={form.improvement_areas} onChange={e => setForm({ ...form, improvement_areas: e.target.value })} rows={5} />
             </div>
             <div className="flex justify-end gap-2">
