@@ -43,9 +43,15 @@ serve(async (req) => {
       supabaseAdmin.rpc('is_approved_user', { _user_id: callerId }),
       supabaseAdmin.rpc('has_role', { _user_id: callerId, _role: 'external' }),
     ]);
-    if (!isApproved || isExternal) {
+    if (!isApproved) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    // Esterni: nessun dato economico, ma risposta vuota (non errore) per non rompere le pagine
+    if (isExternal) {
+      return new Response(JSON.stringify({ margins: {} }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
