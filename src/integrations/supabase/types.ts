@@ -2770,6 +2770,8 @@ export type Database = {
           id: string
           improvement_areas: string | null
           job_title: string | null
+          mbo_paid_amount: number | null
+          mbo_target_amount: number | null
           start_date: string | null
           strengths: string | null
           team: string | null
@@ -2791,6 +2793,8 @@ export type Database = {
           id?: string
           improvement_areas?: string | null
           job_title?: string | null
+          mbo_paid_amount?: number | null
+          mbo_target_amount?: number | null
           start_date?: string | null
           strengths?: string | null
           team?: string | null
@@ -2812,6 +2816,8 @@ export type Database = {
           id?: string
           improvement_areas?: string | null
           job_title?: string | null
+          mbo_paid_amount?: number | null
+          mbo_target_amount?: number | null
           start_date?: string | null
           strengths?: string | null
           team?: string | null
