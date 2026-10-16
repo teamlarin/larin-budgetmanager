@@ -403,14 +403,28 @@ export function useProjectTeam(projectId: string) {
     queryKey: ['project-task-team', projectId],
     enabled: !!projectId,
     queryFn: async () => {
-      const [{ data: project }, { data: members }] = await Promise.all([
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth?.user?.id;
+      const [{ data: project }, { data: members }, { data: roles }] = await Promise.all([
         supabase.from('projects').select('project_leader_id').eq('id', projectId).maybeSingle(),
         supabase.from('project_members').select('user_id').eq('project_id', projectId),
+        uid ? supabase.from('user_roles').select('role').eq('user_id', uid) : Promise.resolve({ data: [] as { role: string }[] }),
       ]);
+      const isExternal = (roles || []).some((r) => r.role === 'external');
 
       const ids = new Set<string>();
-      if (project?.project_leader_id) ids.add(project.project_leader_id);
-      (members || []).forEach((m) => m.user_id && ids.add(m.user_id));
+      if (isExternal) {
+        // Esterni: solo sé stessi + utenti resi visibili dall'admin
+        const { data: visible } = await supabase
+          .from('external_visible_users')
+          .select('visible_user_id')
+          .eq('external_user_id', uid || '');
+        (visible || []).forEach((v) => ids.add(v.visible_user_id));
+        if (uid) ids.add(uid);
+      } else {
+        if (project?.project_leader_id) ids.add(project.project_leader_id);
+        (members || []).forEach((m) => m.user_id && ids.add(m.user_id));
+      }
 
       let profiles: UserProfile[] = [];
       if (ids.size > 0) {
