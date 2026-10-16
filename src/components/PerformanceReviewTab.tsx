@@ -259,6 +259,23 @@ export const PerformanceReviewTab = ({ userId }: PerformanceReviewTabProps) => {
                 </Card>
               )}
 
+              {((review as any).mbo_target_amount != null || (review as any).mbo_paid_amount != null) && (() => {
+                const r: any = review;
+                const pct = objectives.reduce((a, o) => a + (Number(o.bonus_percentage || 0) * Number(o.completion_percentage || 0)) / 100, 0);
+                const eur = (n: number) => `${n.toLocaleString('it-IT', { maximumFractionDigits: 2 })}€`;
+                return (
+                  <Card>
+                    <CardHeader><CardTitle className="text-lg">MBO {review.year}</CardTitle></CardHeader>
+                    <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <InfoField label="MBO previsto" value={r.mbo_target_amount != null ? eur(Number(r.mbo_target_amount)) : null} />
+                      <InfoField label="% raggiunta" value={`${pct.toLocaleString('it-IT', { maximumFractionDigits: 2 })}%`} />
+                      <InfoField label="MBO maturato (teorico)" value={r.mbo_target_amount != null ? eur((Number(r.mbo_target_amount) * pct) / 100) : null} />
+                      <InfoField label="MBO erogato" value={r.mbo_paid_amount != null ? eur(Number(r.mbo_paid_amount)) : null} />
+                    </CardContent>
+                  </Card>
+                );
+              })()}
+
               {/* Punti di Forza e Aree di Miglioramento */}
               {(review.strengths || review.improvement_areas) && (
                 <Card>

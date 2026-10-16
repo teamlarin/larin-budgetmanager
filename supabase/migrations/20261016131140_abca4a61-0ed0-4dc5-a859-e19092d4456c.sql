@@ -1,0 +1,1 @@
+ALTER TABLE public.performance_reviews ADD COLUMN IF NOT EXISTS mbo_target_amount numeric, ADD COLUMN IF NOT EXISTS mbo_paid_amount numeric;
