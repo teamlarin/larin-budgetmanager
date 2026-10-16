@@ -413,17 +413,16 @@ export function useProjectTeam(projectId: string) {
       const isExternal = (roles || []).some((r) => r.role === 'external');
 
       const ids = new Set<string>();
+      if (project?.project_leader_id) ids.add(project.project_leader_id);
+      (members || []).forEach((m) => m.user_id && ids.add(m.user_id));
       if (isExternal) {
-        // Esterni: solo sé stessi + utenti resi visibili dall'admin
+        // Esterni: membri del progetto + sé stessi + utenti resi visibili dall'admin
         const { data: visible } = await supabase
           .from('external_visible_users')
           .select('visible_user_id')
           .eq('external_user_id', uid || '');
         (visible || []).forEach((v) => ids.add(v.visible_user_id));
         if (uid) ids.add(uid);
-      } else {
-        if (project?.project_leader_id) ids.add(project.project_leader_id);
-        (members || []).forEach((m) => m.user_id && ids.add(m.user_id));
       }
 
       let profiles: UserProfile[] = [];
