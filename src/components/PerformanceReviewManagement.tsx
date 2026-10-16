@@ -1045,9 +1045,6 @@ export const PerformanceReviewManagement = () => {
                 <Input type="number" min={0} step="0.01" value={form.mbo_paid_amount} onChange={e => setForm({ ...form, mbo_paid_amount: e.target.value })} />
               </div>
             </div>
-            <div className="hidden">
-              <Textarea value={form.improvement_areas} onChange={e => setForm({ ...form, improvement_areas: e.target.value })} rows={5} />
-            </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Annulla</Button>
               <Button onClick={handleSave} disabled={saving}>{saving ? 'Salvataggio...' : 'Salva'}</Button>
